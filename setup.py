@@ -67,4 +67,5 @@ if __name__ == "__main__":
                             'joblib>=0.11.0',
                             'nibabel>=1.2.0',
                             'nilearn>=0.3.0',
+                            'nistats',
                             'pandas>=0.19.2'])
