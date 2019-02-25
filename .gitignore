@@ -95,3 +95,4 @@ ENV/
 
 # VS Studio code
 .vscode/**
+data
