@@ -17,8 +17,8 @@ from joblib import Parallel, delayed, Memory
 
 # path to the Cam-CAN data set
 CAMCAN_PREPROCESSED = '/storage/data/camcan/camcan_preproc'
-CAMCAN_PATIENTS_EXCLUDED = '/storage/tompus/okozynet/camcan/excluded_patients.csv'
-CAMCAN_TIMESERIES = '/storage/tompus/okozynet/timeseries'
+CAMCAN_PATIENTS_EXCLUDED = '/storage/tompouce/okozynet/camcan/excluded_patients.csv'
+CAMCAN_TIMESERIES = '/storage/tompouce/okozynet/timeseries'
 # path to the atlases
 ATLASES = [fetch_atlas_msdl().maps,
            fetch_atlas_basc_multiscale_2015().scale064,
@@ -26,7 +26,7 @@ ATLASES = [fetch_atlas_msdl().maps,
            fetch_atlas_basc_multiscale_2015().scale197]
 ATLASES_DESCR = ['msdl', 'basc064', 'basc122', 'basc197']
 # path for the caching
-CACHE_TIMESERIES = '/storage/tompus/okozynet/cache/timeseries'
+CACHE_TIMESERIES = '/storage/tompouce/okozynet/cache/timeseries'
 if not os.path.exists(CACHE_TIMESERIES):
     os.makedirs(CACHE_TIMESERIES)
 MEMORY = Memory(CACHE_TIMESERIES)
