@@ -83,7 +83,7 @@ def get_cortex_data(subjects_dir, subject, out_dir):
         out_file = os.path.join(subject_dir, f'{h}.{m}.mgh')
         out_files[h + '_' + m + '_file'] = out_file
 
-        cmd = f'mris_preproc --s {subject} --target fsaverage4 --hemi {h} ' \
+        cmd = f'mris_preproc --s {subject} --target fsaverage --hemi {h} ' \
               f'--meas {m} --out {out_file}'
         run_fs(cmd, env={'SUBJECTS_DIR': subjects_dir})
     
