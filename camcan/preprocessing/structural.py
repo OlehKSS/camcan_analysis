@@ -17,7 +17,7 @@ def get_structural_data(subjects_dir, subject, out_dir):
     out_dir : str
         The output directory.
     """
-    out_files = get_cortex_data(subjects_dir, subject, out_dir)
+    #out_files = get_cortex_data(subjects_dir, subject, out_dir)
     out_files["aseg" + "_file"] = get_volumes_data(subjects_dir, subject, out_dir)
     
     return out_files
@@ -47,6 +47,8 @@ def get_volumes_data(subjects_dir, subject, out_dir):
     
     out_file = os.path.join(subject_dir, 'aseg')
     cmd = f'asegstats2table --subjects {subject} --meas volume --tablefile {out_file}'
+    print(subject, out_file)
+    print(cmd)
     run_fs(cmd, env={'SUBJECTS_DIR': subjects_dir})
 
     return out_file
