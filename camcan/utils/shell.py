@@ -28,8 +28,7 @@ def run_fs(cmd, env={}, ignore_errors=False):
     logging.basicConfig(level=logging.INFO)
 
     process = run(cmd, shell=True, stdout=PIPE, stderr=PIPE, env=merged_env)
-    for line in process.stdout:
-        logging.info(line)
+    logging.info(process.stdout.decode('utf-8'))
 
     if process.returncode != 0 and not ignore_errors:
         raise Exception(f'Non zero return code: {process.returncode}. Bash: {process.stderr}')
