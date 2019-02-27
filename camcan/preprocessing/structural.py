@@ -18,6 +18,7 @@ def get_structural_data(subjects_dir, subject, out_dir):
         The output directory.
     """
     #out_files = get_cortex_data(subjects_dir, subject, out_dir)
+    out_files = {}
     out_files["aseg" + "_file"] = get_volumes_data(subjects_dir, subject, out_dir)
     
     return out_files
