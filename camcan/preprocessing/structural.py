@@ -17,8 +17,7 @@ def get_structural_data(subjects_dir, subject, out_dir):
     out_dir : str
         The output directory.
     """
-    #out_files = get_cortex_data(subjects_dir, subject, out_dir)
-    out_files = {}
+    out_files = get_cortex_data(subjects_dir, subject, out_dir)
     out_files["aseg" + "_file"] = get_volumes_data(subjects_dir, subject, out_dir)
     
     return out_files
@@ -41,13 +40,14 @@ def get_volumes_data(subjects_dir, subject, out_dir):
     out_file : str
         The path to generated data.
     """
-    subject_dir = os.path.join(out_dir, subject, 'data')
+    subject_dir = os.path.join(out_dir, subject)
 
     if not os.path.isdir(subject_dir):
         os.makedirs(subject_dir)
     
-    out_file = os.path.join(subject_dir, 'aseg')
-    cmd = f'asegstats2table --subjects {subject} --meas volume --tablefile {out_file}'
+    out_file = os.path.join(subject_dir, 'aseg.csv')
+    cmd = f'python2 $FREESURFER_HOME/bin/asegstats2table --subjects {subject} --tablefile {out_file}'\
+          ' -d comma --meas volume'
     print(subject, out_file)
     print(cmd)
     run_fs(cmd, env={'SUBJECTS_DIR': subjects_dir})
@@ -78,7 +78,7 @@ def get_cortex_data(subjects_dir, subject, out_dir):
     hemi = ('lh', 'rh')
 
     for h, m in product(hemi, meas):
-        subject_dir = os.path.join(out_dir, subject, 'data')
+        subject_dir = os.path.join(out_dir, subject)
 
         if not os.path.isdir(subject_dir):
                 os.makedirs(subject_dir)
