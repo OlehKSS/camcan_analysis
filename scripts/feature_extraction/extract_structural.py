@@ -13,10 +13,10 @@ from camcan.preprocessing import get_structural_data
 CAMCAN_CONNECTIVITY = '/storage/data/camcan/camcan_connectivity'
 CAMCAN_FREESURFER = '/storage/store/data/camcan-mne/freesurfer'
 OUT_DIR = '/storage/tompouce/okozynet/camcan/structural'
-N_JOBS = 5
+N_JOBS = 10
 # list of subjects that we have connectivity data for
 subjects = [d[4:] for d in os.listdir(CAMCAN_CONNECTIVITY) if isdir(join(CAMCAN_CONNECTIVITY, d))]
-subjects = ['CC221585']
+
 structural_data = Parallel(n_jobs=N_JOBS, verbose=1)(
                            delayed(get_structural_data)(CAMCAN_FREESURFER, s, OUT_DIR)
                            for s in subjects)
