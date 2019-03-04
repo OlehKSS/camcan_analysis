@@ -1,4 +1,6 @@
 """Utility functions for parcinging Freesurfer output files"""
+from os.path import join
+
 import nibabel as nb
 import numpy as np
 
