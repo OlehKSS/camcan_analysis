@@ -20,12 +20,12 @@ def _vectorize_fs_surf(file_path):
         Extracted data.
     """
     img = nb.load(file_path)
-    in_data = img.get_data().squeeze()
+    in_data = img.get_fdata().squeeze()
 
     return in_data
 
 
-def get_area(subject_dir):
+def get_area(subject_dir, n_points):
     """
     Read area information for the given subject and turn it into a vector.
     Data for left and right hemispheres are concatenated.
@@ -34,6 +34,8 @@ def get_area(subject_dir):
     ----------
     subject_dir : str
         The directory to files with surface data.
+    n_points : int
+        Defines how many points to take from each surface.
     
     Returns
     -------
@@ -45,10 +47,10 @@ def get_area(subject_dir):
     lh_data = _vectorize_fs_surf(join(subject_dir, AREA_FILES[0]))
     rh_data = _vectorize_fs_surf(join(subject_dir, AREA_FILES[1]))
     
-    return np.concatenate((lh_data, rh_data), 0)
+    return np.concatenate((lh_data[:n_points], rh_data[:n_points]), 0)
 
 
-def get_thickness(subject_dir):
+def get_thickness(subject_dir, n_points):
     """
     Read thickness information for the given subject and turn it into a vector.
     Data for left and right hemispheres are concatenated.
@@ -57,6 +59,8 @@ def get_thickness(subject_dir):
     ----------
     subject_dir : str
         The directory to files with surface data.
+    n_points : int
+        Defines how many points to take from each surface.
     
     Returns
     -------
@@ -68,5 +72,5 @@ def get_thickness(subject_dir):
     lh_data = _vectorize_fs_surf(join(subject_dir, THICKNESS_FILES[0]))
     rh_data = _vectorize_fs_surf(join(subject_dir, THICKNESS_FILES[1]))
     
-    return np.concatenate((lh_data, rh_data), 0)
+    return np.concatenate((lh_data[:n_points], rh_data[:n_points]), 0)
     

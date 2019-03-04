@@ -19,7 +19,7 @@ CAMCAN_FREESURFER = '/storage/store/data/camcan-mne/freesurfer'
 OUT_DIR = '/storage/tompouce/okozynet/camcan/structural'
 VOLUME_FILE = 'aseg.csv'
 N_JOBS = 10
-N_CORTICAL_FEATURES = 327684
+N_CORTICAL_FEATURES = 2562
 # list of subjects that we have connectivity data for
 subjects = [d[4:] for d in os.listdir(CAMCAN_CONNECTIVITY) if isdir(join(CAMCAN_CONNECTIVITY, d))]
 
@@ -42,20 +42,20 @@ for s in subjects:
     subject_dir = join(OUT_DIR, s)
     
     try:
-        t_area = get_area(subject_dir)
-    except:
+        t_area = get_area(subject_dir, n_points=N_CORTICAL_FEATURES)
+    except FileNotFoundError:
         print(f'Cannot find area file for subject {s}')
         area_failed.append(s)
 
     try:
-        t_thickness = get_thickness(subject_dir)
-    except:
+        t_thickness = get_thickness(subject_dir, n_points=N_CORTICAL_FEATURES)
+    except FileNotFoundError:
         print(f'Cannot find thickness file for subject {s}')
         thickness_failed.append(s)
 
     try:
         volume = pd.read_csv(join(subject_dir, VOLUME_FILE), index_col=0)
-    except:
+    except FileNotFoundError:
         print(f'Cannot find volume file for subject {s}')
         volume_failed.append(s)
 
@@ -80,6 +80,6 @@ print('Failed to load area data for\n', area_failed)
 print('Failed to load thickness data for\n', thickness_failed)
 print('Failed to load volume data for\n', volume_failed)
 
-area_data.to_csv(join(OUT_DIR, 'area_data.csv'))
-thickness_data.to_csv(join(OUT_DIR, 'thickness_data.csv'))
-volume_data.to_csv(join(OUT_DIR, 'volume_data.csv'))
+area_data.to_pickle(join(OUT_DIR, 'area_data.gzip'), compression='gzip')
+thickness_data.to_pickle(join(OUT_DIR, 'thickness_data.gzip'), compression='gzip')
+volume_data.to_pickle(join(OUT_DIR, 'volume_data.gzip'), compression='gzip')
