@@ -19,14 +19,16 @@ CAMCAN_FREESURFER = '/storage/store/data/camcan-mne/freesurfer'
 OUT_DIR = '/storage/tompouce/okozynet/camcan/structural'
 VOLUME_FILE = 'aseg.csv'
 N_JOBS = 10
+N_CORTICAL_FEATURES = 327684
 # list of subjects that we have connectivity data for
 subjects = [d[4:] for d in os.listdir(CAMCAN_CONNECTIVITY) if isdir(join(CAMCAN_CONNECTIVITY, d))]
 
-structural_data = Parallel(n_jobs=N_JOBS, verbose=1)(
-                           delayed(get_structural_data)(CAMCAN_FREESURFER, s, OUT_DIR)
-                           for s in subjects)
+# structural_data = Parallel(n_jobs=N_JOBS, verbose=1)(
+#                            delayed(get_structural_data)(CAMCAN_FREESURFER, s, OUT_DIR)
+#                            for s in subjects)
 
 subjects = tuple(d for d in os.listdir(OUT_DIR) if isdir(join(OUT_DIR, d)))
+print(f'Found {len(subjects)} subjects')
 
 area_data = None
 thickness_data = None
@@ -42,26 +44,29 @@ for s in subjects:
     try:
         t_area = get_area(subject_dir)
     except:
+        print(f'Cannot find area file for subject {s}')
         area_failed.append(s)
 
     try:
         t_thickness = get_thickness(subject_dir)
     except:
-        volume_failed.append(s)
+        print(f'Cannot find thickness file for subject {s}')
+        thickness_failed.append(s)
 
     try:
         volume = pd.read_csv(join(subject_dir, VOLUME_FILE), index_col=0)
     except:
+        print(f'Cannot find volume file for subject {s}')
         volume_failed.append(s)
 
     if area_data is None:
-        area_data = pd.DataFrame(index=subjects, columns=np.arange(start=0, stop=len(t_area)), dtype=float)
+        area_data = pd.DataFrame(index=subjects, columns=np.arange(start=0, stop=N_CORTICAL_FEATURES), dtype=float)
         area_data.loc[s] = t_area
     else:
         area_data.loc[s] = t_area
     
     if thickness_data is None:
-        thickness_data = pd.DataFrame(index=subjects, columns=np.arange(start=0, stop=len(t_thickness)), dtype=float)
+        thickness_data = pd.DataFrame(index=subjects, columns=np.arange(start=0, stop=N_CORTICAL_FEATURES), dtype=float)
         thickness_data.loc[s] = t_thickness
     else:
         thickness_data.loc[s] = t_thickness
