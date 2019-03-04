@@ -35,7 +35,7 @@ def get_area(subject_dir, n_points):
     subject_dir : str
         The directory to files with surface data.
     n_points : int
-        Defines how many points to take from each surface.
+        Defines how many points to take from cortex surface.
     
     Returns
     -------
@@ -46,8 +46,10 @@ def get_area(subject_dir, n_points):
     
     lh_data = _vectorize_fs_surf(join(subject_dir, AREA_FILES[0]))
     rh_data = _vectorize_fs_surf(join(subject_dir, AREA_FILES[1]))
+
+    n_points_hemi = n_points // 2
     
-    return np.concatenate((lh_data[:n_points], rh_data[:n_points]), 0)
+    return np.concatenate((lh_data[:n_points_hemi], rh_data[:n_points_hemi]), 0)
 
 
 def get_thickness(subject_dir, n_points):
@@ -60,7 +62,7 @@ def get_thickness(subject_dir, n_points):
     subject_dir : str
         The directory to files with surface data.
     n_points : int
-        Defines how many points to take from each surface.
+        Defines how many points to take from cortex surface.
     
     Returns
     -------
@@ -71,6 +73,8 @@ def get_thickness(subject_dir, n_points):
     
     lh_data = _vectorize_fs_surf(join(subject_dir, THICKNESS_FILES[0]))
     rh_data = _vectorize_fs_surf(join(subject_dir, THICKNESS_FILES[1]))
+
+    n_points_hemi = n_points // 2
     
-    return np.concatenate((lh_data[:n_points], rh_data[:n_points]), 0)
+    return np.concatenate((lh_data[:n_points_hemi], rh_data[:n_points_hemi]), 0)
     

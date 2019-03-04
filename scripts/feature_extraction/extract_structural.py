@@ -19,7 +19,7 @@ CAMCAN_FREESURFER = '/storage/store/data/camcan-mne/freesurfer'
 OUT_DIR = '/storage/tompouce/okozynet/camcan/structural'
 VOLUME_FILE = 'aseg.csv'
 N_JOBS = 10
-N_CORTICAL_FEATURES = 2562
+N_CORTICAL_FEATURES = 5124
 # list of subjects that we have connectivity data for
 subjects = [d[4:] for d in os.listdir(CAMCAN_CONNECTIVITY) if isdir(join(CAMCAN_CONNECTIVITY, d))]
 
