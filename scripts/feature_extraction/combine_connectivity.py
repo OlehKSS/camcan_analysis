@@ -29,18 +29,18 @@ for sel_atlas in ATLASES:
             try:
                 with open(file_path, 'rb') as f:
                     connect_matrix = jb.load(f)
+
+                if connect_data is None:
+                    connect_data = pd.DataFrame(index=subjects, columns=np.arange(start=0, stop=len(connect_matrix)),
+                                                    dtype=float)
+                    # save data to for this subject and apply Fisher's transform
+                    connect_data.loc[s] = np.arctanh(connect_matrix)
+                else:
+                    # save data to for this subject and apply Fisher's transform
+                    connect_data.loc[s] = np.arctanh(connect_matrix)
             except OSError:
                 print(f'Cannot find connectivity file {file_path} for subject {s}')
                 connect_failed.append(s)
-
-            if connect_data is None:
-                connect_data = pd.DataFrame(index=subjects, columns=np.arange(start=0, stop=len(connect_matrix)),
-                                                dtype=float)
-                # save data to for this subject and apply Fisher's transform
-                connect_data.loc[s] = np.arctanh(connect_matrix)
-            else:
-                # save data to for this subject and apply Fisher's transform
-                connect_data.loc[s] = np.arctanh(connect_matrix)
 
         print('Failed to load connectivity data for\n', connect_failed)
 
