@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 # load connectivity matrices
-ATLASES = ['msdl', 'basc064', 'basc122', 'basc197']
+ATLASES = ['msdl', 'basc064', 'basc122']
 # path for the different kind of connectivity matrices
 CONNECTIVITY_KIND = ['correlation', 'partial correlation', 'tangent']
 CONNECTIVITY_DATA_DIR = '/storage/data/camcan/camcan_connectivity'
