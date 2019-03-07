@@ -47,8 +47,8 @@ def get_volumes_data(subjects_dir, subject, out_dir):
         os.makedirs(subject_dir)
     
     out_file = os.path.join(subject_dir, 'aseg.csv')
-    cmd = f'python2 $FREESURFER_HOME/bin/asegstats2table --subjects {subject} --tablefile {out_file}'\
-          ' -meas volume'
+    cmd = f'python2 $FREESURFER_HOME/bin/asegstats2table --subjects {subject} --tablefile {out_file} '\
+          '--meas volume'
     print(subject, out_file)
     print(cmd)
     run_fs(cmd, env={'SUBJECTS_DIR': subjects_dir})
