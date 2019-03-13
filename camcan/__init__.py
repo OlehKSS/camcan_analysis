@@ -10,7 +10,7 @@ utils
     Module containing some utilities
 """
 
-# list all submodules available in imblearn and version
+# list all submodules available
 __all__ = [
     'datasets',
     'preprocessing',

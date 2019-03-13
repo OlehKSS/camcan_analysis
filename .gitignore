@@ -92,3 +92,7 @@ ENV/
 # tmp files
 .ini~
 *.swp
+
+# VS Studio code
+.vscode/**
+data
