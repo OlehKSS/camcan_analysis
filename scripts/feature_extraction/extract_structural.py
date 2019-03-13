@@ -11,8 +11,6 @@ from camcan.preprocessing import get_structural_data
 from camcan.utils import get_area, get_thickness
 
 # import pdb; pdb.set_trace()
-
-
 # test functions on MRI data
 CAMCAN_CONNECTIVITY = '/storage/data/camcan/camcan_connectivity'
 CAMCAN_FREESURFER = '/storage/store/data/camcan-mne/freesurfer'
@@ -23,9 +21,9 @@ N_CORTICAL_FEATURES = 5124
 # list of subjects that we have connectivity data for
 subjects = [d[4:] for d in os.listdir(CAMCAN_CONNECTIVITY) if isdir(join(CAMCAN_CONNECTIVITY, d))]
 
-# structural_data = Parallel(n_jobs=N_JOBS, verbose=1)(
-#                            delayed(get_structural_data)(CAMCAN_FREESURFER, s, OUT_DIR)
-#                            for s in subjects)
+structural_data = Parallel(n_jobs=N_JOBS, verbose=1)(
+                           delayed(get_structural_data)(CAMCAN_FREESURFER, s, OUT_DIR)
+                           for s in subjects)
 
 subjects = tuple(d for d in os.listdir(OUT_DIR) if isdir(join(OUT_DIR, d)))
 print(f'Found {len(subjects)} subjects')
