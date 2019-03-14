@@ -68,4 +68,5 @@ if __name__ == "__main__":
                             'nibabel>=1.2.0',
                             'nilearn>=0.3.0',
                             'nistats',
-                            'pandas>=0.19.2'])
+                            'pandas>=0.19.2',
+                            'tables'])
