@@ -5,44 +5,41 @@ import joblib as jb
 import numpy as np
 import pandas as pd
 
+from camcan.datasets import load_camcan_timeseries_rest
+from camcan.preprocessing import extract_connectivity
+
 # load connectivity matrices
-ATLASES = ['msdl', 'basc064', 'basc122']
+ATLASES = ['modl256', 'basc197']
 # path for the different kind of connectivity matrices
-CONNECTIVITY_KIND = ['correlation', 'partial correlation', 'tangent']
-CONNECTIVITY_DATA_DIR = '/storage/data/camcan/camcan_connectivity'
+CONNECTIVITY_KIND = 'tangent'
+CAMCAN_TIMESERIES = '/storage/tompouce/okozynet/camcan/timeseries'
+CAMCAN_PATIENTS_EXCLUDED = None
 OUT_DIR = '/storage/tompouce/okozynet/camcan/connectivity'
+OUT_FILE = join(OUT_DIR, f'connect_data_{CONNECTIVITY_KIND}.h5')
 
-subjects = tuple(d[4:] for d in os.listdir(CONNECTIVITY_DATA_DIR) if isdir(join(CONNECTIVITY_DATA_DIR, d)))
-
-print(f'Found {len(subjects)} subjects')
+# remove the output file if it exists
+if os.path.exists(OUT_FILE):
+    os.remove(OUT_FILE)
 
 for sel_atlas in ATLASES:
-    for sel_connect in CONNECTIVITY_KIND:
-        print('**************************************************************')
-        print(f'Reading connectivity files for {sel_atlas}/{sel_connect}')
+    print('**************************************************************')
+    print(f'Reading timeseries files for {sel_atlas}')
 
-        connect_data = None
-        connect_failed = []
-        for s in subjects:
-            file_path = join(CONNECTIVITY_DATA_DIR,
-                            f'sub-{s}/{sel_atlas}/{sel_connect}/sub-{s}_task-Rest_confounds.pkl')
-            try:
-                with open(file_path, 'rb') as f:
-                    connect_matrix = jb.load(f)
+    dataset = load_camcan_timeseries_rest(data_dir=CAMCAN_TIMESERIES,
+                                          atlas=sel_atlas,
+                                          patients_excluded=CAMCAN_PATIENTS_EXCLUDED)
+    connectivities = extract_connectivity(dataset.timeseries, kind=CONNECTIVITY_KIND)
+    connect_data = None
+    subjects = tuple(s[4:] for s in dataset.subject_id)
 
-                if connect_data is None:
-                    connect_data = pd.DataFrame(index=subjects, columns=np.arange(start=0, stop=len(connect_matrix)),
-                                                    dtype=float)
-                    # save data to for this subject and apply Fisher's transform
-                    connect_data.loc[s] = np.arctanh(connect_matrix)
-                else:
-                    # save data to for this subject and apply Fisher's transform
-                    connect_data.loc[s] = np.arctanh(connect_matrix)
-            except OSError:
-                print(f'Cannot find connectivity file {file_path} for subject {s}')
-                connect_failed.append(s)
+    for i, s in enumerate(subjects):
+        if connect_data is None:
+            connect_data = pd.DataFrame(index=subjects,
+                                        columns=np.arange(start=0, stop=len(connectivities[i])),
+                                        dtype=float)
+            connect_data.loc[s] = connectivities[i]
+        else:
+            connect_data.loc[s] = connectivities[i]
 
-        print('Failed to load connectivity data for\n', connect_failed)
+    connect_data.to_hdf(OUT_FILE, key=sel_atlas, complevel=9)
 
-        connect_data.to_pickle(join(OUT_DIR, f'connect_data_{sel_atlas}_{sel_connect}.gzip'),
-                                    compression='gzip')

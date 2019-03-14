@@ -20,7 +20,8 @@ CAMCAN_PREPROCESSED = '/storage/data/camcan/camcan_preproc'
 CAMCAN_PATIENTS_EXCLUDED = '/storage/tompouce/okozynet/camcan/excluded_patients.csv'
 CAMCAN_TIMESERIES = '/storage/tompouce/okozynet/camcan/timeseries'
 # path to the atlases
-ATLASES = ['/storage/store/derivatives/OpenNeuro/modl/256/0.0001/maps.nii.gz ',
+# modl atlas from task-fMRI was used
+ATLASES = ['/storage/store/derivatives/OpenNeuro/modl/256/0.0001/maps.nii.gz',
            fetch_atlas_basc_multiscale_2015().scale197]
 ATLASES_DESCR = ['modl256', 'basc197']
 # path for the caching
