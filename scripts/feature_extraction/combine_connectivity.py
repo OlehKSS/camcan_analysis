@@ -10,7 +10,7 @@ from camcan.preprocessing import extract_connectivity
 # load connectivity matrices
 ATLASES = ['modl256', 'basc197']
 # path for the different kind of connectivity matrices
-CONNECTIVITY_KIND = 'tangent'
+CONNECTIVITY_KIND = 'correlation' #'tangent'
 CAMCAN_TIMESERIES = '/storage/tompouce/okozynet/camcan/timeseries'
 CAMCAN_PATIENTS_EXCLUDED = None
 OUT_DIR = '/storage/tompouce/okozynet/camcan/connectivity'
@@ -36,9 +36,17 @@ for sel_atlas in ATLASES:
             connect_data = pd.DataFrame(index=subjects,
                                         columns=np.arange(start=0, stop=len(connectivities[i])),
                                         dtype=float)
-            connect_data.loc[s] = connectivities[i]
+            if CONNECTIVITY_KIND == 'correlation':
+                # save and apply Fisher's transform
+                connect_data.loc[s] = np.arctanh(connectivities[i])
+            else:
+                connect_data.loc[s] = connectivities[i]
         else:
-            connect_data.loc[s] = connectivities[i]
+            if CONNECTIVITY_KIND == 'correlation':
+                # save and apply Fisher's transform
+                connect_data.loc[s] = np.arctanh(connectivities[i])
+            else:
+                connect_data.loc[s] = connectivities[i]
 
     connect_data.to_hdf(OUT_FILE, key=sel_atlas, complevel=9)
 
