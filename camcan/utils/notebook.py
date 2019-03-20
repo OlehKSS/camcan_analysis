@@ -2,11 +2,106 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import Ridge, RidgeCV
 from sklearn.metrics import mean_absolute_error, explained_variance_score, r2_score
 from sklearn.model_selection import cross_val_score, cross_val_predict, learning_curve, ShuffleSplit
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
+
+from .stacking import StackingRegressor
+
+
+def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None):
+    """Helper for running ridge resgression.
+    
+    Parameters
+    ----------
+    named_data : list(tuple(str, pandas.DataFrame))
+        List of tuples (name, data) with name and corresponding features
+        to be used for predictions by linear models.
+        
+    subjects_data : pandas.DataFrame
+        Information about subjects from CamCAN dataset.
+
+    cv : int, cross-validation generator or an iterable, optional
+        Determines the cross-validation splitting strategy.
+        Possible inputs for cv are:
+
+        - None, to use the default 3-fold cross validation,
+        - integer, to specify the number of folds in a `(Stratified)KFold`,
+        - :term:`CV splitter`,
+        - An iterable yielding (train, test) splits as arrays of indices.
+
+        For integer/None inputs, if the estimator is a classifier and ``y`` is
+        either binary or multiclass, :class:`StratifiedKFold` is used. In all
+        other cases, :class:`KFold` is used.
+        
+    alphas : numpy.ndarray
+        Values for parameter alpha to be tested using RidgeCV. Default is
+        np.logspace(start=-3, stop=1, num=50, base=10.0).
+        
+    train_sizes : array-like, shape (n_ticks,), dtype float or int
+        Relative or absolute numbers of training examples that will be used to
+        generate the learning curve. If the dtype is float, it is regarded as a
+        fraction of the maximum size of the training set (that is determined
+        by the selected validation method), i.e. it has to be within (0, 1].
+        Otherwise it is interpreted as absolute sizes of the training sets.
+        Note that for classification the number of samples usually have to
+        be big enough to contain at least one sample from each class.
+        (default: np.linspace(0.1, 1.0, 5))
+    """
+    if alphas is None:
+        alphas = np.logspace(start=-3, stop=1, num=50, base=10.0)
+    if train_sizes is None:
+        train_sizes = np.linspace(.1, 1.0, 5)
+
+    rnd_state = 42
+    names = tuple(n for n, _ in named_data)
+    data =  pd.concat((d for _, d in named_data), axis=1, join='inner')
+    feature_col_lens = tuple(d.shape[1] for _, d in named_data)
+    estimators = []
+    # prepare first-level estimators for stacking
+    for i_data, _ in enumerate(named_data):
+        feature_transformers = []
+        ft_begin = 0
+        ft_end = 0
+        # prepare input information for ColumnTransformer
+        for i_ct, (name, col_len) in  enumerate(zip(names, feature_col_lens)):
+            trans_name = ('pass_' if i_data == i_ct else 'drop_') + name
+            transformer = 'passthrough' if i_data == i_ct else 'drop'
+            ft_end = ft_end + col_len
+            trans_slice = slice(ft_begin, ft_end)
+            ft_begin = ft_begin + col_len
+            feature_transformers.append((trans_name, transformer, trans_slice))
+
+        est_name = 'reg_' + named_data[i_data][0]
+        est_pipeline = make_pipeline(ColumnTransformer(feature_transformers), 
+                                                       StandardScaler(),
+                                                       RidgeCV(alphas))
+        estimators.append((est_name, est_pipeline))
+
+    final_estimator = RandomForestRegressor(n_estimators=100, random_state=rnd_state,
+                                            oob_score=True, n_jobs=-1)
+    reg = StackingRegressor(estimators=estimators, final_estimator=final_estimator, cv=cv,
+                            random_state=rnd_state, n_jobs=-1)
+
+    data_rnd = data.sample(frac=1)
+    subjects = data_rnd.index.values
+    y = subjects_data.loc[data_rnd.index.values].age.values
+    X = data_rnd.values
+    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error', cv=cv, n_jobs=-1)
+
+    r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv, n_jobs=-1)
+    y_pred = cross_val_predict(reg, X, y, cv=cv, n_jobs=-1)
+
+    train_sizes, train_scores, test_scores = \
+        learning_curve(reg, X, y, cv=cv, train_sizes=train_sizes,
+                       scoring='neg_mean_absolute_error', n_jobs=-1)
+
+    return y, y_pred, mae, r2, train_sizes, train_scores, test_scores, subjects
 
 
 def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None):
@@ -59,14 +154,15 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None):
     X = data_rnd.values
 
     reg = make_pipeline(StandardScaler(), RidgeCV(alphas))
+    # Monte Carlo cross-validation
     cv_ss = ShuffleSplit(n_splits=cv, random_state=42)
 
     mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error', cv=cv_ss)
     r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv_ss)
-    y_pred = cross_val_predict(reg, X, y, cv=cv_ss)
+    y_pred = cross_val_predict(reg, X, y, cv=cv)
     
     train_sizes, train_scores, test_scores = \
-        learning_curve(reg, X, y, cv=cv_ss, train_sizes=train_sizes, scoring="neg_mean_absolute_error")
+        learning_curve(reg, X, y, cv=cv_ss, train_sizes=train_sizes, scoring='neg_mean_absolute_error')
 
     return y, y_pred, mae, r2, train_sizes, train_scores, test_scores, subjects
 
@@ -140,13 +236,16 @@ def plot_learning_curve(train_sizes, train_scores, test_scores, title='Learning 
     plt.show()
 
 
-def plot_barchart(mae_std, bar_text_indent=2):
+def plot_barchart(mae_std, title='Age Prediction Performance of Different Modalities',
+                  bar_text_indent=2):
     """Plot bar chart.
     
     Parameters
     ----------
     mae_std : dict(str, (number, number))
         Dictionary with labels and corresponding mae and std.
+    title : str
+        Bar chart title.
     bar_text_indent : number
         Indent from the bar top for labels displaying mae and std, measures in years.
     """
@@ -160,16 +259,17 @@ def plot_barchart(mae_std, bar_text_indent=2):
     axs.barh(y_pos, mae, align='center', xerr=std)
 
     # remove frame around the plot
-    axs.spines["top"].set_visible(False)
-    axs.spines["bottom"].set_visible(False)
-    axs.spines["right"].set_visible(False)
-    axs.spines["left"].set_visible(False)
+    axs.spines['top'].set_visible(False)
+    axs.spines['bottom'].set_visible(False)
+    axs.spines['right'].set_visible(False)
+    axs.spines['left'].set_visible(False)
 
     for i, v in enumerate(mae):
-        axs.text(v + bar_text_indent, i - 0.05, f'{round(v, 2)} ({round(std[i], 2)})', color='blue', bbox=dict(facecolor='white'))
+        axs.text(v + bar_text_indent, i - 0.05, f'{round(v, 2)} ({round(std[i], 2)})', 
+                 color='blue', bbox=dict(facecolor='white'))
 
     plt.yticks(y_pos, objects)
     plt.xlabel('Absolute Prediction Error (Years)')
-    plt.title('Age Prediction Performance of Different Modalities')
+    plt.title(title)
     plt.show()
 
