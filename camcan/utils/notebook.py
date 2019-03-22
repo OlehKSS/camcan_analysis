@@ -5,16 +5,16 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.compose import ColumnTransformer
-from sklearn.linear_model import Ridge, RidgeCV
 from sklearn.metrics import mean_absolute_error, explained_variance_score, r2_score
 from sklearn.model_selection import cross_val_score, cross_val_predict, learning_curve, ShuffleSplit
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+from .bagging import CVBagging
 from .stacking import StackingRegressor
 
 
-def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None):
+def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None, n_jobs=None):
     """Helper for running ridge resgression.
     
     Parameters
@@ -40,7 +40,7 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
         other cases, :class:`KFold` is used.
         
     alphas : numpy.ndarray
-        Values for parameter alpha to be tested using RidgeCV. Default is
+        Values for parameter alpha to be tested using. Default is
         np.logspace(start=-3, stop=1, num=50, base=10.0).
         
     train_sizes : array-like, shape (n_ticks,), dtype float or int
@@ -52,6 +52,12 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
         Note that for classification the number of samples usually have to
         be big enough to contain at least one sample from each class.
         (default: np.linspace(0.1, 1.0, 5))
+
+    n_jobs : int or None, optional (default=None)
+        The number of CPUs to use to do the computation.
+        ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
+        ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
+        for more details.
     """
     if alphas is None:
         alphas = np.logspace(start=-3, stop=1, num=50, base=10.0)
@@ -80,31 +86,31 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
         est_name = 'reg_' + named_data[i_data][0]
         est_pipeline = make_pipeline(ColumnTransformer(feature_transformers), 
                                                        StandardScaler(),
-                                                       RidgeCV(alphas))
+                                                       CVBagging(alphas))
         estimators.append((est_name, est_pipeline))
 
     final_estimator = RandomForestRegressor(n_estimators=100, random_state=rnd_state,
-                                            oob_score=True, n_jobs=-1)
+                                            oob_score=True, n_jobs=n_jobs)
     reg = StackingRegressor(estimators=estimators, final_estimator=final_estimator, cv=cv,
-                            random_state=rnd_state, n_jobs=-1)
+                            random_state=rnd_state, n_jobs=n_jobs)
 
     data_rnd = data.sample(frac=1)
     subjects = data_rnd.index.values
     y = subjects_data.loc[data_rnd.index.values].age.values
     X = data_rnd.values
-    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error', cv=cv, n_jobs=-1)
+    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error', cv=cv, n_jobs=n_jobs)
 
-    r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv, n_jobs=-1)
-    y_pred = cross_val_predict(reg, X, y, cv=cv, n_jobs=-1)
+    r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv, n_jobs=n_jobs)
+    y_pred = cross_val_predict(reg, X, y, cv=cv, n_jobs=n_jobs)
 
     train_sizes, train_scores, test_scores = \
         learning_curve(reg, X, y, cv=cv, train_sizes=train_sizes,
-                       scoring='neg_mean_absolute_error', n_jobs=-1)
+                       scoring='neg_mean_absolute_error', n_jobs=n_jobs)
 
     return y, y_pred, mae, r2, train_sizes, train_scores, test_scores, subjects
 
 
-def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None):
+def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, n_jobs=None):
     """Helper for running ridge resgression.
     
     Parameters
@@ -129,7 +135,7 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None):
         other cases, :class:`KFold` is used.
         
     alphas : numpy.ndarray
-        Values for parameter alpha to be tested using RidgeCV. Default is
+        Values for parameter alpha to be tested using. Default is
         np.logspace(start=-3, stop=1, num=50, base=10.0).
         
     train_sizes : array-like, shape (n_ticks,), dtype float or int
@@ -141,6 +147,12 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None):
         Note that for classification the number of samples usually have to
         be big enough to contain at least one sample from each class.
         (default: np.linspace(0.1, 1.0, 5))
+    
+    n_jobs : int or None, optional (default=None)
+        The number of CPUs to use to do the computation.
+        ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
+        ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
+        for more details.
     """
     if alphas is None:
         alphas = np.logspace(start=-3, stop=1, num=50, base=10.0)
@@ -153,16 +165,16 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None):
     y = subjects_data.loc[data_rnd.index.values].age.values
     X = data_rnd.values
 
-    reg = make_pipeline(StandardScaler(), RidgeCV(alphas))
+    reg = make_pipeline(StandardScaler(), CVBagging(alphas))
     # Monte Carlo cross-validation
     cv_ss = ShuffleSplit(n_splits=cv, random_state=42)
 
-    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error', cv=cv_ss)
-    r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv_ss)
-    y_pred = cross_val_predict(reg, X, y, cv=cv)
+    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error', cv=cv_ss, n_jobs=n_jobs)
+    r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv_ss, n_jobs=n_jobs)
+    y_pred = cross_val_predict(reg, X, y, cv=cv, n_jobs=n_jobs)
     
     train_sizes, train_scores, test_scores = \
-        learning_curve(reg, X, y, cv=cv_ss, train_sizes=train_sizes, scoring='neg_mean_absolute_error')
+        learning_curve(reg, X, y, cv=cv_ss, train_sizes=train_sizes, scoring='neg_mean_absolute_error',  n_jobs=n_jobs)
 
     return y, y_pred, mae, r2, train_sizes, train_scores, test_scores, subjects
 
