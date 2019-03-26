@@ -1,8 +1,8 @@
 import numpy as np
 from joblib import delayed, Parallel
 from sklearn.base import BaseEstimator, RegressorMixin
-from sklearn.linear_model import Ridge
-from sklearn.model_selection._split import check_cv
+from sklearn.linear_model import RidgeCV
+from sklearn.model_selection._split import check_cv, PredefinedSplit
 from sklearn.utils.validation import indexable
 
 
@@ -31,29 +31,32 @@ class CVBagging(BaseEstimator, RegressorMixin):
         either binary or multiclass, :class:`StratifiedKFold` is used. In all
         other cases, :class:`KFold` is used.
     """
-    def __init__(self, alphas=(0.1, 1.0, 10.0), cv=5):
+    def __init__(self, alphas=(0.1, 1.0, 10.0), cv=5, n_jobs=None):
         self.alphas = np.asarray(alphas)
         self.cv = cv
+        self.n_jobs = n_jobs
     
-    def fit(self, X, y, n_jobs=None):
+    def fit(self, X, y):
         X, y = indexable(X, y)
         cv = check_cv(self.cv, y)
 
         def call_ridge(X, y, train, test):
-            regs = []
-            reg_scores = []
-            for alpha in self.alphas:
-                reg = Ridge(alpha)
-                reg.fit(X[train], y[train])
-                regs.append(reg)
-                reg_scores.append(reg.score(X[test], y[test]))
-            
-            return regs[np.argmax(reg_scores)]
+            # prepare data so it will fit into one split
+            X_slice = np.concatenate((X[train], X[test]))
+            y_slice = np.concatenate((y[train], y[test]))
+            test_indices = np.ones_like(y_slice)
+            test_indices[:len(train)] = -1
 
-        parallel = Parallel(n_jobs=n_jobs)
+            predefined_split = PredefinedSplit(test_fold=test_indices)
+            reg = RidgeCV(alphas=self.alphas, cv=predefined_split)
+            reg.fit(X_slice, y_slice)
+
+            return reg
+
+        parallel = Parallel(n_jobs=self.n_jobs)
         self.estimators_ = parallel(delayed(call_ridge)(X, y, train, test)
             for train, test in cv.split(X, y))
-            
+
         return self
     
     def predict(self, X):

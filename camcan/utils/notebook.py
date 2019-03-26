@@ -1,8 +1,10 @@
 """Utilities for Jupyter Notebook reports"""
+from itertools import combinations
 
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import mean_absolute_error, explained_variance_score, r2_score
@@ -165,7 +167,7 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, n_jobs=
     y = subjects_data.loc[data_rnd.index.values].age.values
     X = data_rnd.values
 
-    reg = make_pipeline(StandardScaler(), CVBagging(alphas))
+    reg = make_pipeline(StandardScaler(), CVBagging(alphas, n_jobs=n_jobs))
     # Monte Carlo cross-validation
     cv_ss = ShuffleSplit(n_splits=cv, random_state=42)
 
@@ -284,4 +286,35 @@ def plot_barchart(mae_std, title='Age Prediction Performance of Different Modali
     plt.xlabel('Absolute Prediction Error (Years)')
     plt.title(title)
     plt.show()
+
+
+def plot_boxplot(data, title='Age Prediction Performance'):
+    """Plot box plot.
+
+    Parameters
+    ----------
+    data : dict(str, numpy.ndarray)
+        Dictionary with labels and corresponding data.
+    title : str
+        Bar chart title.
+    """
+    data_pd = pd.DataFrame(data)
+    sns.set_style('darkgrid')
+    ax = sns.boxplot(data=data_pd, showmeans=True, orient='h')
+    ax.set_title(title)
+    ax.set(xlabel='absolute prediction error (years)')
+
+
+def plot_error_scatters(data, title='AE Scatter'):
+    for key1, key2 in combinations(data.keys(), r=2):
+        fig, ax = plt.subplots()
+        plt.scatter(data[key1], data[key2])
+        plt.title(title)
+        plt.xlabel(key1)
+        plt.ylabel(key2)
+        plt.grid()
+
+        ax.set(xlim=(data[key1].min() - 1, data[key2].max() + 1),
+                ylim=(data[key1].min() - 1, data[key2].max() + 1))
+        ax.plot(ax.get_xlim(), ax.get_ylim(), ls='--', c='.3')
 
