@@ -7,12 +7,12 @@ import pandas as pd
 import seaborn as sns
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.compose import ColumnTransformer
+from sklearn.linear_model import RidgeCV
 from sklearn.metrics import mean_absolute_error, explained_variance_score, r2_score
-from sklearn.model_selection import cross_val_score, cross_val_predict, learning_curve, ShuffleSplit
+from sklearn.model_selection import cross_val_score, cross_val_predict, learning_curve, ShuffleSplit, KFold
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from .bagging import CVBagging
 from .stacking import StackingRegressor
 
 
@@ -42,7 +42,7 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
         other cases, :class:`KFold` is used.
         
     alphas : numpy.ndarray
-        Values for parameter alpha to be tested using. Default is
+        Values for parameter alpha to be tested. Default is
         np.logspace(start=-3, stop=1, num=50, base=10.0).
         
     train_sizes : array-like, shape (n_ticks,), dtype float or int
@@ -88,7 +88,7 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
         est_name = 'reg_' + named_data[i_data][0]
         est_pipeline = make_pipeline(ColumnTransformer(feature_transformers), 
                                                        StandardScaler(),
-                                                       CVBagging(alphas))
+                                                       RidgeCV(alphas))
         estimators.append((est_name, est_pipeline))
 
     final_estimator = RandomForestRegressor(n_estimators=100, random_state=rnd_state,
@@ -99,13 +99,15 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
     subjects = data.index.values
     y = subjects_data.loc[subjects].age.values
     X = data.values
-    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error', cv=cv, n_jobs=n_jobs)
 
-    r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv, n_jobs=n_jobs)
-    y_pred = cross_val_predict(reg, X, y, cv=cv, n_jobs=n_jobs)
+    kfold_cv = KFold(n_splits=cv, shuffle=True, random_state=rnd_state)
+    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error', cv=kfold_cv, n_jobs=n_jobs)
+
+    r2 = cross_val_score(reg, X, y, scoring='r2', cv=kfold_cv, n_jobs=n_jobs)
+    y_pred = cross_val_predict(reg, X, y, cv=kfold_cv, n_jobs=n_jobs)
 
     train_sizes, train_scores, test_scores = \
-        learning_curve(reg, X, y, cv=cv, train_sizes=train_sizes,
+        learning_curve(reg, X, y, cv=kfold_cv, train_sizes=train_sizes,
                        scoring='neg_mean_absolute_error', n_jobs=n_jobs)
 
     return y, y_pred, mae, r2, train_sizes, train_scores, test_scores, subjects
@@ -136,7 +138,7 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, n_jobs=
         other cases, :class:`KFold` is used.
         
     alphas : numpy.ndarray
-        Values for parameter alpha to be tested using. Default is
+        Values for parameter alpha to be tested. Default is
         np.logspace(start=-3, stop=1, num=50, base=10.0).
         
     train_sizes : array-like, shape (n_ticks,), dtype float or int
@@ -165,7 +167,7 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, n_jobs=
     y = subjects_data.loc[subjects].age.values
     X = data.values
 
-    reg = make_pipeline(StandardScaler(), CVBagging(alphas, n_jobs=n_jobs))
+    reg = make_pipeline(StandardScaler(), RidgeCV(alphas))
     # Monte Carlo cross-validation
     cv_ss = ShuffleSplit(n_splits=cv, random_state=42)
 
@@ -301,7 +303,7 @@ def plot_boxplot(data, title='Age Prediction Performance'):
     plt.figure()
     ax = sns.boxplot(data=data_pd, showmeans=True, orient='h')
     ax.set_title(title)
-    ax.set(xlabel='absolute prediction error (years)')
+    ax.set(xlabel='Absolute Prediction Error (Years)')
     plt.show()
 
 
@@ -316,14 +318,29 @@ def plot_error_scatters(data, title='AE Scatter', xlim=None, ylim=None):
         if xlim != None:
             xlim_ = (xlim[0] - 1, xlim[1] + 1)
         else:
-            xlim_ =(data[key1].min() - 1, data[key2].max() + 1)
+            xlim_ =(data[key1].min() - 1, data[key1].max() + 1)
         
         if ylim != None:
             ylim_ = (ylim[0] - 1, ylim[1] + 1)
         else:
-            ylim_ = (data[key1].min() - 1, data[key2].max() + 1)
+            ylim_ = (data[key2].min() - 1, data[key2].max() + 1)
 
         ax.set(xlim=xlim_, ylim=ylim_)
         ax.plot(ax.get_xlim(), ax.get_ylim(), ls='--', c='.3')
         plt.grid()
+
+
+def plot_error_age(data, age, title='AE vs Age', xlim=None, ylim=None):
+    for key1 in data.keys():
+        plt.figure()
+        plt.scatter(age, data[key1], edgecolors='black')
+        plt.title(title)
+        plt.xlabel('Age (Years)')
+        plt.ylabel(key1)
+        plt.grid()
+
+        if xlim != None:
+            plt.xlim(xlim)
+        if ylim != None:
+            plt.ylim(ylim)
 
