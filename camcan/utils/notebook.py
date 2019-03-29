@@ -1,20 +1,22 @@
 """Utilities for Jupyter Notebook reports"""
+from itertools import combinations
 
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.compose import ColumnTransformer
-from sklearn.linear_model import Ridge, RidgeCV
+from sklearn.linear_model import RidgeCV
 from sklearn.metrics import mean_absolute_error, explained_variance_score, r2_score
-from sklearn.model_selection import cross_val_score, cross_val_predict, learning_curve, ShuffleSplit
+from sklearn.model_selection import cross_val_score, cross_val_predict, learning_curve, ShuffleSplit, KFold
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from .stacking import StackingRegressor
 
 
-def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None):
+def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None, n_jobs=None):
     """Helper for running ridge resgression.
     
     Parameters
@@ -40,7 +42,7 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
         other cases, :class:`KFold` is used.
         
     alphas : numpy.ndarray
-        Values for parameter alpha to be tested using RidgeCV. Default is
+        Values for parameter alpha to be tested. Default is
         np.logspace(start=-3, stop=1, num=50, base=10.0).
         
     train_sizes : array-like, shape (n_ticks,), dtype float or int
@@ -52,6 +54,12 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
         Note that for classification the number of samples usually have to
         be big enough to contain at least one sample from each class.
         (default: np.linspace(0.1, 1.0, 5))
+
+    n_jobs : int or None, optional (default=None)
+        The number of CPUs to use to do the computation.
+        ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
+        ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
+        for more details.
     """
     if alphas is None:
         alphas = np.logspace(start=-3, stop=1, num=50, base=10.0)
@@ -84,27 +92,28 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
         estimators.append((est_name, est_pipeline))
 
     final_estimator = RandomForestRegressor(n_estimators=100, random_state=rnd_state,
-                                            oob_score=True, n_jobs=-1)
+                                            oob_score=True, n_jobs=n_jobs)
     reg = StackingRegressor(estimators=estimators, final_estimator=final_estimator, cv=cv,
-                            random_state=rnd_state, n_jobs=-1)
+                            random_state=rnd_state, n_jobs=n_jobs)
 
-    data_rnd = data.sample(frac=1)
-    subjects = data_rnd.index.values
-    y = subjects_data.loc[data_rnd.index.values].age.values
-    X = data_rnd.values
-    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error', cv=cv, n_jobs=-1)
+    subjects = data.index.values
+    y = subjects_data.loc[subjects].age.values
+    X = data.values
 
-    r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv, n_jobs=-1)
-    y_pred = cross_val_predict(reg, X, y, cv=cv, n_jobs=-1)
+    kfold_cv = KFold(n_splits=cv, shuffle=True, random_state=rnd_state)
+    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error', cv=kfold_cv, n_jobs=n_jobs)
+
+    r2 = cross_val_score(reg, X, y, scoring='r2', cv=kfold_cv, n_jobs=n_jobs)
+    y_pred = cross_val_predict(reg, X, y, cv=kfold_cv, n_jobs=n_jobs)
 
     train_sizes, train_scores, test_scores = \
-        learning_curve(reg, X, y, cv=cv, train_sizes=train_sizes,
-                       scoring='neg_mean_absolute_error', n_jobs=-1)
+        learning_curve(reg, X, y, cv=kfold_cv, train_sizes=train_sizes,
+                       scoring='neg_mean_absolute_error', n_jobs=n_jobs)
 
     return y, y_pred, mae, r2, train_sizes, train_scores, test_scores, subjects
 
 
-def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None):
+def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, n_jobs=None):
     """Helper for running ridge resgression.
     
     Parameters
@@ -129,7 +138,7 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None):
         other cases, :class:`KFold` is used.
         
     alphas : numpy.ndarray
-        Values for parameter alpha to be tested using RidgeCV. Default is
+        Values for parameter alpha to be tested. Default is
         np.logspace(start=-3, stop=1, num=50, base=10.0).
         
     train_sizes : array-like, shape (n_ticks,), dtype float or int
@@ -141,6 +150,12 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None):
         Note that for classification the number of samples usually have to
         be big enough to contain at least one sample from each class.
         (default: np.linspace(0.1, 1.0, 5))
+    
+    n_jobs : int or None, optional (default=None)
+        The number of CPUs to use to do the computation.
+        ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
+        ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
+        for more details.
     """
     if alphas is None:
         alphas = np.logspace(start=-3, stop=1, num=50, base=10.0)
@@ -148,21 +163,20 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None):
         train_sizes = np.linspace(.1, 1.0, 5)
     
     # prepare data, subjects age
-    data_rnd = data.sample(frac=1)
-    subjects = data_rnd.index.values
-    y = subjects_data.loc[data_rnd.index.values].age.values
-    X = data_rnd.values
+    subjects = data.index.values
+    y = subjects_data.loc[subjects].age.values
+    X = data.values
 
     reg = make_pipeline(StandardScaler(), RidgeCV(alphas))
     # Monte Carlo cross-validation
     cv_ss = ShuffleSplit(n_splits=cv, random_state=42)
 
-    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error', cv=cv_ss)
-    r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv_ss)
-    y_pred = cross_val_predict(reg, X, y, cv=cv)
+    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error', cv=cv_ss, n_jobs=n_jobs)
+    r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv_ss, n_jobs=n_jobs)
+    y_pred = cross_val_predict(reg, X, y, cv=cv, n_jobs=n_jobs)
     
     train_sizes, train_scores, test_scores = \
-        learning_curve(reg, X, y, cv=cv_ss, train_sizes=train_sizes, scoring='neg_mean_absolute_error')
+        learning_curve(reg, X, y, cv=cv_ss, train_sizes=train_sizes, scoring='neg_mean_absolute_error',  n_jobs=n_jobs)
 
     return y, y_pred, mae, r2, train_sizes, train_scores, test_scores, subjects
 
@@ -272,4 +286,91 @@ def plot_barchart(mae_std, title='Age Prediction Performance of Different Modali
     plt.xlabel('Absolute Prediction Error (Years)')
     plt.title(title)
     plt.show()
+
+
+def plot_boxplot(data, title='Age Prediction Performance'):
+    """Plot box plot.
+
+    Parameters
+    ----------
+    data : dict(str, numpy.ndarray)
+        Dictionary with labels and corresponding data.
+    title : str
+        Bar chart title.
+    """
+    data_pd = pd.DataFrame(data)
+    sns.set_style('darkgrid')
+    plt.figure()
+    ax = sns.boxplot(data=data_pd, showmeans=True, orient='h')
+    ax.set_title(title)
+    ax.set(xlabel='Absolute Prediction Error (Years)')
+    plt.show()
+
+
+def plot_error_scatters(data, age, title='AE Scatter', xlim=None, ylim=None):
+    for key1, key2 in combinations(data.keys(), r=2):
+        fig, ax = plt.subplots()
+        c = plt.cm.viridis((age - min(age)) / max(age))
+
+        plt.scatter(data[key1], data[key2], edgecolors='black', color=c)
+        plt.title(title)
+        plt.xlabel(key1)
+        plt.ylabel(key2)
+
+        if xlim is not None:
+            xlim_ = (xlim[0] - 1, xlim[1] + 1)
+        else:
+            xlim_ =(data[key1].min() - 1, data[key1].max() + 1)
+        
+        if ylim is not None:
+            ylim_ = (ylim[0] - 1, ylim[1] + 1)
+        else:
+            ylim_ = (data[key2].min() - 1, data[key2].max() + 1)
+
+        ax.set(xlim=xlim_, ylim=ylim_)
+        ax.plot(ax.get_xlim(), ax.get_ylim(), ls='--', c='.3')
+        plt.grid()
+
+
+def plot_error_age(data, y, title='AE vs Age', xlim=None, ylim=None):
+    for key1 in data.keys():
+        plt.figure()
+        plt.scatter(y, data[key1], edgecolors='black')
+        plt.title(title)
+        plt.xlabel('Age (Years)')
+        plt.ylabel(key1)
+        plt.grid()
+
+        if xlim is not None:
+            plt.xlim(xlim)
+        if ylim is not None:
+            plt.ylim(ylim)
+
+
+def plot_error_segments(data, y, segment_len=10, title=None, figsize=None, xlim=(0, 55)):
+    for key in data.keys():
+        n_segments = int((y.max() - y.min()) / segment_len)
+        segments_dict = {}
+        plt_title = 'AE per Segment, %s' % key if title is None else title
+        y_pred = data[key] + y
+
+        for i in range(0, n_segments):
+            bound_low = y.min() + i * segment_len
+            bound_high = y.min() + (i + 1) * segment_len
+
+            if i == n_segments - 1:
+                indices = y >= bound_low
+            else:
+                indices = (y >= bound_low) * (y < bound_high)
+
+            segments_dict[f'{bound_low}-{bound_high}'] = np.abs(y[indices] - y_pred[indices])
+        
+        df = pd.DataFrame.from_dict(segments_dict, orient='index').transpose()
+        
+        sns.set_style('darkgrid')
+        fig, ax = plt.subplots(figsize=figsize)
+        sns.boxplot(data=df, showmeans=True, orient='h')
+        ax.set_title(plt_title)
+        ax.set(xlim=xlim, xlabel='Absolute Prediction Error (Years)', ylabel='Age Ranges')
+        plt.show()
 
