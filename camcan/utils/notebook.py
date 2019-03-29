@@ -307,20 +307,22 @@ def plot_boxplot(data, title='Age Prediction Performance'):
     plt.show()
 
 
-def plot_error_scatters(data, title='AE Scatter', xlim=None, ylim=None):
+def plot_error_scatters(data, age, title='AE Scatter', xlim=None, ylim=None):
     for key1, key2 in combinations(data.keys(), r=2):
         fig, ax = plt.subplots()
-        plt.scatter(data[key1], data[key2], edgecolors='black')
+        c = plt.cm.viridis((age - min(age)/max(age))
+
+        plt.scatter(data[key1], data[key2], edgecolors='black', color=c)
         plt.title(title)
         plt.xlabel(key1)
         plt.ylabel(key2)
 
-        if xlim != None:
+        if xlim is not None:
             xlim_ = (xlim[0] - 1, xlim[1] + 1)
         else:
             xlim_ =(data[key1].min() - 1, data[key1].max() + 1)
         
-        if ylim != None:
+        if ylim is not None:
             ylim_ = (ylim[0] - 1, ylim[1] + 1)
         else:
             ylim_ = (data[key2].min() - 1, data[key2].max() + 1)
@@ -330,17 +332,45 @@ def plot_error_scatters(data, title='AE Scatter', xlim=None, ylim=None):
         plt.grid()
 
 
-def plot_error_age(data, age, title='AE vs Age', xlim=None, ylim=None):
+def plot_error_age(data, y, title='AE vs Age', xlim=None, ylim=None):
     for key1 in data.keys():
         plt.figure()
-        plt.scatter(age, data[key1], edgecolors='black')
+        plt.scatter(y, data[key1], edgecolors='black')
         plt.title(title)
         plt.xlabel('Age (Years)')
         plt.ylabel(key1)
         plt.grid()
 
-        if xlim != None:
+        if xlim is not None:
             plt.xlim(xlim)
-        if ylim != None:
+        if ylim is not None:
             plt.ylim(ylim)
+
+
+def plot_error_segments(data, y, segment_len=10, title=None, figsize=None, xlim=(0, 55)):
+    for key in data.keys():
+        n_segments = int((y.max() - y.min()) / segment_len)
+        segments_dict = {}
+        plt_title = 'AE per Segment, %s' % key if title is None else title
+        y_pred = data[key] + y
+
+        for i in range(0, n_segments):
+            bound_low = y.min() + i * segment_len
+            bound_high = y.min() + (i + 1) * segment_len
+
+            if i == n_segments - 1:
+                indices = y >= bound_low
+            else:
+                indices = (y >= bound_low) * (y < bound_high)
+
+            segments_dict[f'{bound_low}-{bound_high}'] = np.abs(y[indices] - y_pred[indices])
+        
+        df = pd.DataFrame.from_dict(segments_dict, orient='index').transpose()
+        
+        sns.set_style('darkgrid')
+        fig, ax = plt.subplots(figsize=figsize)
+        sns.boxplot(data=df, showmeans=True, orient='h')
+        ax.set_title(plt_title)
+        ax.set(xlim=xlim, xlabel='Absolute Prediction Error (Years)', ylabel='Age Ranges')
+        plt.show()
 
