@@ -310,7 +310,7 @@ def plot_boxplot(data, title='Age Prediction Performance'):
 def plot_error_scatters(data, age, title='AE Scatter', xlim=None, ylim=None):
     for key1, key2 in combinations(data.keys(), r=2):
         fig, ax = plt.subplots()
-        c = plt.cm.viridis((age - min(age)/max(age))
+        c = plt.cm.viridis((age - min(age)) / max(age))
 
         plt.scatter(data[key1], data[key2], edgecolors='black', color=c)
         plt.title(title)
