@@ -3,6 +3,8 @@ from itertools import combinations
 
 import numpy as np
 import matplotlib.pyplot as plt
+import mne
+from mne.datasets import sample
 import pandas as pd
 import seaborn as sns
 from sklearn.ensemble import RandomForestRegressor
@@ -13,7 +15,84 @@ from sklearn.model_selection import cross_val_score, cross_val_predict, learning
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from .stacking import StackingRegressor
+from ..processing import StackingRegressor, SPoC
+
+
+def run_meg_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, fbands=None):
+    """Helper for running ridge resgression.
+    
+    Parameters
+    ----------
+    data : pandas.DataFrame
+        Features to be used for predictions.
+        
+    subjects_data : pandas.DataFrame
+        Information about subjects from CamCAN dataset.
+
+    cv : int, cross-validation generator or an iterable, optional
+        Determines the cross-validation splitting strategy.
+        Possible inputs for cv are:
+
+        - None, to use the default 3-fold cross validation,
+        - integer, to specify the number of folds in a `(Stratified)KFold`,
+        - :term:`CV splitter`,
+        - An iterable yielding (train, test) splits as arrays of indices.
+
+        For integer/None inputs, if the estimator is a classifier and ``y`` is
+        either binary or multiclass, :class:`StratifiedKFold` is used. In all
+        other cases, :class:`KFold` is used.
+        
+    alphas : numpy.ndarray
+        Values for parameter alpha to be tested using RidgeCV. Default is
+        np.logspace(start=-3, stop=1, num=50, base=10.0).
+        
+    train_sizes : array-like, shape (n_ticks,), dtype float or int
+        Relative or absolute numbers of training examples that will be used to
+        generate the learning curve. If the dtype is float, it is regarded as a
+        fraction of the maximum size of the training set (that is determined
+        by the selected validation method), i.e. it has to be within (0, 1].
+        Otherwise it is interpreted as absolute sizes of the training sets.
+        Note that for classification the number of samples usually have to
+        be big enough to contain at least one sample from each class.
+        (default: np.linspace(0.1, 1.0, 5))
+    
+    fbands : [(float, float)]
+        List of frequency bands to be checked with SPoC.
+    """
+    if alphas is None:
+        alphas = np.logspace(start=-3, stop=1, num=50, base=10.0)
+    if train_sizes is None:
+        train_sizes = np.linspace(.1, 1.0, 5)
+    
+    # read sample data to prepare picks for epochs
+    data_path = sample.data_path()
+    raw_fname = data_path + '/MEG/sample/sample_audvis_filt-0-40_raw.fif'
+    raw = mne.io.read_raw_fif(raw_fname)
+    info = raw.info
+    picks = mne.pick_types(info, meg='mag')
+
+    subjects = [d['subject'] for d in data if 'subject' in d]
+    covs = np.array(tuple(d['covs'][:, picks][:, :, picks] for d in data if 'subject' in d))
+    
+    # prepare data, subjects age
+    y = subjects_data.loc[subjects].age.values
+    X = np.arange(len(y))
+
+    spoc = SPoC(covs=covs, fbands=fbands, spoc=True, n_components=len(picks), alpha=0.01)
+
+
+    reg = make_pipeline(spoc, StandardScaler(), RidgeCV(alphas))
+    # Monte Carlo cross-validation
+    cv_ss = ShuffleSplit(n_splits=cv, random_state=42)
+
+    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error', cv=cv_ss)
+    r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv_ss)
+    y_pred = cross_val_predict(reg, X, y, cv=cv)
+    
+    train_sizes, train_scores, test_scores = \
+        learning_curve(reg, X, y, cv=cv_ss, train_sizes=train_sizes, scoring='neg_mean_absolute_error')
+
+    return y, y_pred, mae, r2, train_sizes, train_scores, test_scores, subjects 
 
 
 def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None, n_jobs=None):

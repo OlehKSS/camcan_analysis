@@ -14,5 +14,6 @@ utils
 __all__ = [
     'datasets',
     'preprocessing',
+    'processing',
     'utils'
 ]
