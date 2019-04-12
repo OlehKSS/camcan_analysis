@@ -80,7 +80,6 @@ def run_meg_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, fba
 
     spoc = SPoC(covs=covs, fbands=fbands, spoc=True, n_components=len(picks), alpha=0.01)
 
-
     reg = make_pipeline(spoc, StandardScaler(), RidgeCV(alphas))
     # Monte Carlo cross-validation
     cv_ss = ShuffleSplit(n_splits=cv, random_state=42)
@@ -95,7 +94,7 @@ def run_meg_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, fba
     return y, y_pred, mae, r2, train_sizes, train_scores, test_scores, subjects 
 
 
-def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None, n_jobs=None):
+def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None, fbands=None, n_jobs=None):
     """Helper for running ridge resgression.
     
     Parameters
@@ -133,6 +132,9 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
         Note that for classification the number of samples usually have to
         be big enough to contain at least one sample from each class.
         (default: np.linspace(0.1, 1.0, 5))
+    
+    fbands : [(float, float)]
+        List of frequency bands to be checked with SPoC.
 
     n_jobs : int or None, optional (default=None)
         The number of CPUs to use to do the computation.
@@ -146,10 +148,25 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
         train_sizes = np.linspace(.1, 1.0, 5)
 
     rnd_state = 42
-    names = tuple(n for n, _ in named_data)
-    data =  pd.concat((d for _, d in named_data), axis=1, join='inner')
-    feature_col_lens = tuple(d.shape[1] for _, d in named_data)
+    names = []
+    combined_data = []
+    meg_data = None
+    # extract data and estimator names
+    for name, data in named_data:
+        names.append(name)
+        if name == 'meg':
+            meg_data = data
+            meg_subjects = tuple(d['subject'] for d in data if 'subject' in d)
+            pseudo_data = np.arange(len(meg_subjects))
+            combined_data.append(pd.DataFrame(pseudo_data, index=meg_subjects))
+        else:
+            combined_data.append(data)
+
+    data =  pd.concat(combined_data, axis=1, join='inner')
+    # if we have meg data, we will provide only one column of data for the classifiers
+    feature_col_lens = tuple(d.shape[1] for d in combined_data)
     estimators = []
+    subjects = data.index.values
     # prepare first-level estimators for stacking
     for i_data, _ in enumerate(named_data):
         feature_transformers = []
@@ -165,17 +182,33 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
             feature_transformers.append((trans_name, transformer, trans_slice))
 
         est_name = 'reg_' + named_data[i_data][0]
-        est_pipeline = make_pipeline(ColumnTransformer(feature_transformers), 
-                                                       StandardScaler(),
-                                                       RidgeCV(alphas))
+
+        if est_name == 'reg_meg':
+            if fbands is None:
+                raise ValueError('fbands should be provided for MEG classifier.')
+            # read sample data to prepare picks for epochs
+            data_path = sample.data_path()
+            raw_fname = data_path + '/MEG/sample/sample_audvis_filt-0-40_raw.fif'
+            raw = mne.io.read_raw_fif(raw_fname)
+            info = raw.info
+            picks = mne.pick_types(info, meg='mag')
+            # if there is no subject information than we'll skip that entry
+            covs = np.array(tuple(d['covs'][:, picks][:, :, picks] for d in meg_data if 'subject' in d))
+            spoc = SPoC(covs=covs, fbands=fbands, spoc=True, n_components=len(picks), alpha=0.01)
+
+            est_pipeline = make_pipeline(ColumnTransformer(feature_transformers),
+                                         spoc, StandardScaler(), RidgeCV(alphas))
+        else:
+            est_pipeline = make_pipeline(ColumnTransformer(feature_transformers), 
+                                                        StandardScaler(),
+                                                        RidgeCV(alphas))
         estimators.append((est_name, est_pipeline))
 
     final_estimator = RandomForestRegressor(n_estimators=100, random_state=rnd_state,
                                             oob_score=True, n_jobs=n_jobs)
     reg = StackingRegressor(estimators=estimators, final_estimator=final_estimator, cv=cv,
                             random_state=rnd_state, n_jobs=n_jobs)
-
-    subjects = data.index.values
+    
     y = subjects_data.loc[subjects].age.values
     X = data.values
 

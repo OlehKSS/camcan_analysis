@@ -35,6 +35,8 @@ class SPoC(TransformerMixin):
         target = fstd(y)
         self.patterns_ = []
         self.filters_ = []
+        if isinstance(X, np.ndarray) and not np.issubdtype(X.dtype, np.integer):
+            X = X.astype('int')
         for fb in range(len(self.fbands)):
             if self.spoc:
                 covsfb = self.covs[:, fb]
