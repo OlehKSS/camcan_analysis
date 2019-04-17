@@ -90,8 +90,10 @@ def run_meg_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, fba
     
     train_sizes, train_scores, test_scores = \
         learning_curve(reg, X, y, cv=cv_ss, train_sizes=train_sizes, scoring='neg_mean_absolute_error')
+    
+    df_pred = pd.DataFrame(y_pred, index=subjects, dtype=float)
 
-    return y, y_pred, mae, r2, train_sizes, train_scores, test_scores, subjects 
+    return df_pred, mae, r2, train_sizes, train_scores, test_scores 
 
 
 def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None, fbands=None, n_jobs=None):
@@ -221,8 +223,10 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
     train_sizes, train_scores, test_scores = \
         learning_curve(reg, X, y, cv=kfold_cv, train_sizes=train_sizes,
                        scoring='neg_mean_absolute_error', n_jobs=n_jobs)
+    
+    df_pred = pd.DataFrame(y_pred, index=subjects, dtype=float)
 
-    return y, y_pred, mae, r2, train_sizes, train_scores, test_scores, subjects
+    return df_pred, mae, r2, train_sizes, train_scores, test_scores 
 
 
 def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, n_jobs=None):
@@ -289,8 +293,10 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, n_jobs=
     
     train_sizes, train_scores, test_scores = \
         learning_curve(reg, X, y, cv=cv_ss, train_sizes=train_sizes, scoring='neg_mean_absolute_error',  n_jobs=n_jobs)
+    
+    df_pred = pd.DataFrame(y_pred, index=subjects, dtype=float)
 
-    return y, y_pred, mae, r2, train_sizes, train_scores, test_scores, subjects
+    return df_pred, mae, r2, train_sizes, train_scores, test_scores 
 
 
 def plot_pred(y, y_pred, mae, title='Prediction vs Measured'):
@@ -301,8 +307,8 @@ def plot_pred(y, y_pred, mae, title='Prediction vs Measured'):
     plt.plot([y.min(), y.max()], [y.min(), y.max()], '-', lw=3, color='green')
     plt.plot([y.min(), y.max()], [y.min() - mae, y.max() - mae], 'k--', lw=3, color='red')
     plt.plot([y.min(), y.max()], [y.min() + mae, y.max() + mae], 'k--', lw=3, color='red')
-    plt.xlabel('chronological age')
-    plt.ylabel('predicted age')
+    plt.xlabel('Chronological Age')
+    plt.ylabel('Predicted Age')
     plt.grid()
     plt.show()
 
@@ -472,23 +478,28 @@ def plot_error_age(data, title='AE vs Age', xlim=None, ylim=None):
             plt.ylim(ylim)
 
 
-def plot_error_segments(data, y, segment_len=10, title=None, figsize=None, xlim=(0, 55)):
-    for key in data.keys():
-        n_segments = int((y.max() - y.min()) / segment_len)
+def plot_error_segments(data, segment_len=10, title=None, figsize=None, xlim=(0, 55)):
+    """Plot prediction errors for different age groups."""
+    keys = data.columns
+    # remove column with the original age
+    keys = keys[1:]
+    age = data.age.values
+    for key in keys:
+        n_segments = int((age.max() - age.min()) / segment_len)
         segments_dict = {}
         plt_title = 'AE per Segment, %s' % key if title is None else title
-        y_pred = data[key] + y
+        age_pred = data[key]
 
         for i in range(0, n_segments):
-            bound_low = y.min() + i * segment_len
-            bound_high = y.min() + (i + 1) * segment_len
+            bound_low = age.min() + i * segment_len
+            bound_high = age.min() + (i + 1) * segment_len
 
             if i == n_segments - 1:
-                indices = y >= bound_low
+                indices = age >= bound_low
             else:
-                indices = (y >= bound_low) * (y < bound_high)
+                indices = (age >= bound_low) * (age < bound_high)
 
-            segments_dict[f'{bound_low}-{bound_high}'] = np.abs(y[indices] - y_pred[indices])
+            segments_dict[f'{bound_low}-{bound_high}'] = np.abs(age[indices] - age_pred[indices])
         
         df = pd.DataFrame.from_dict(segments_dict, orient='index').transpose()
         
