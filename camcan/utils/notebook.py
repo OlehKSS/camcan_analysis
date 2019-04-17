@@ -60,7 +60,7 @@ def run_meg_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, fba
         List of frequency bands to be checked with SPoC.
     """
     if alphas is None:
-        alphas = np.logspace(start=-3, stop=1, num=50, base=10.0)
+        alphas = np.logspace(-3, 5, 100)
     if train_sizes is None:
         train_sizes = np.linspace(.1, 1.0, 5)
     
@@ -143,7 +143,7 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
         for more details.
     """
     if alphas is None:
-        alphas = np.logspace(start=-3, stop=1, num=50, base=10.0)
+        alphas = np.logspace(-3, 5, 100)
     if train_sizes is None:
         train_sizes = np.linspace(.1, 1.0, 5)
 
@@ -270,7 +270,7 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, n_jobs=
         for more details.
     """
     if alphas is None:
-        alphas = np.logspace(start=-3, stop=1, num=50, base=10.0)
+        alphas = np.logspace(-3, 5, 100)
     if train_sizes is None:
         train_sizes = np.linspace(.1, 1.0, 5)
     
@@ -418,13 +418,19 @@ def plot_boxplot(data, title='Age Prediction Performance'):
     ax.set(xlabel='Absolute Prediction Error (Years)')
     plt.show()
 
-
-def plot_error_scatters(data, age, title='AE Scatter', xlim=None, ylim=None):
-    for key1, key2 in combinations(data.keys(), r=2):
+def plot_error_scatters(data, title='AE Scatter', xlim=None, ylim=None):
+    """Plot errors of predictions from different modalities versus each other."""
+    data = data.dropna()
+    age = data.age.values
+    color_map = plt.cm.viridis((age - min(age)) / max(age))
+    keys = data.columns
+    # remove column with the original age
+    keys = keys[1:]
+    for key1, key2 in combinations(keys, r=2):
         fig, ax = plt.subplots()
-        c = plt.cm.viridis((age - min(age)) / max(age))
-
-        plt.scatter(data[key1], data[key2], edgecolors='black', color=c)
+        x_values = np.abs(data[key1].values - age)
+        y_values = np.abs(data[key2].values - age)
+        plt.scatter(x_values, y_values, edgecolors='black', color=color_map)
         plt.title(title)
         plt.xlabel(key1)
         plt.ylabel(key2)
@@ -444,10 +450,17 @@ def plot_error_scatters(data, age, title='AE Scatter', xlim=None, ylim=None):
         plt.grid()
 
 
-def plot_error_age(data, y, title='AE vs Age', xlim=None, ylim=None):
-    for key1 in data.keys():
+def plot_error_age(data, title='AE vs Age', xlim=None, ylim=None):
+    """Plot errors of predictions from different modalities versus subject's age."""
+    keys = data.columns
+    # remove column with the original age
+    keys = keys[1:]
+    for key1 in keys:
+        data_slice = data[key1].dropna()
+        age = data.loc[data_slice.index, 'age'].values
+        abs_errors = np.abs(data_slice.values - age)
         plt.figure()
-        plt.scatter(y, data[key1], edgecolors='black')
+        plt.scatter(age, abs_errors, edgecolors='black')
         plt.title(title)
         plt.xlabel('Age (Years)')
         plt.ylabel(key1)

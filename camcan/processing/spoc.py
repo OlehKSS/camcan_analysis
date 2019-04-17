@@ -1,5 +1,5 @@
 import copy as cp
-import pdb
+
 from mne import EvokedArray
 import numpy as np
 from scipy.linalg import pinv, eigh
@@ -35,6 +35,7 @@ class SPoC(TransformerMixin):
         target = fstd(y)
         self.patterns_ = []
         self.filters_ = []
+
         if isinstance(X, np.ndarray) and not np.issubdtype(X.dtype, np.integer):
             X = X.astype('int')
             X = X[:, 0]
