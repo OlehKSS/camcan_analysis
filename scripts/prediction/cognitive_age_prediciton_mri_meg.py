@@ -10,7 +10,7 @@ from camcan.utils import (run_stacking, run_ridge, plot_pred, plot_learning_curv
 
 
 CV = 10
-N_JOBS = -1
+N_JOBS = 6
 PANDAS_OUT_FILE = '../../data/age_prediction_exp_data.h5'
 # store mae, learning curves for summary plots
 regression_mae = pd.DataFrame(columns=range(0, CV), dtype=float)
@@ -97,7 +97,7 @@ data_ref = {
 for key, data in data_ref.items():
     if 'Stack' in key:
         df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores \
-        = run_stacking(data, subjects_data, cv=CV)
+        = run_stacking(data, subjects_data, cv=CV, fbands=FREQ_BANDS)
     elif key == 'MEG':
         df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores = \
         run_meg_ridge(data, subjects_data, cv=CV, fbands=FREQ_BANDS)
