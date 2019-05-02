@@ -10,7 +10,7 @@ from camcan.utils import (run_stacking, run_ridge, plot_pred, plot_learning_curv
 
 
 CV = 10
-N_JOBS = 6
+N_JOBS = 4
 PANDAS_OUT_FILE = '../../data/age_prediction_exp_data.h5'
 # store mae, learning curves for summary plots
 regression_mae = pd.DataFrame(columns=range(0, CV), dtype=float)
@@ -85,6 +85,8 @@ data_ref = {
     'MEG': meg_data,
     'MRI Stacked': [('area', area_data), ('thickness', thickness_data), ('volume', volume_data)],
     'fMRI Stacked': [('basc', connect_data_tangent_basc), ('modl', connect_data_tangent_modl)],
+    'MRI, fMRI Stacked-multimodal': [('area', area_data), ('thickness', thickness_data), ('volume', volume_data),
+                                     ('basc', connect_data_tangent_basc), ('modl', connect_data_tangent_modl)],
     'MEG, MRI Stacked-multimodal': [('area', area_data), ('thickness', thickness_data), ('volume', volume_data),
                                     ('meg', meg_data)],
     'MEG, fMRI Stacked-multimodal': [('basc', connect_data_tangent_basc), ('modl', connect_data_tangent_modl),
