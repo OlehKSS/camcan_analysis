@@ -75,7 +75,7 @@ multimodal_data = [('area', area_data), ('thickness', thickness_data), ('volume'
                    ('basc', connect_data_tangent_basc), ('modl', connect_data_tangent_modl),
                    ('meg', meg_data)]
 
-y, y_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores, _ \
+df_pred, arr_mae, r2, train_sizes, train_scores, test_scores\
     = run_stacking(multimodal_data, subjects_data, cv=CV, fbands=FREQ_BANDS)
 
 arr_mae = -arr_mae
