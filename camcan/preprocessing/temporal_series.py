@@ -2,6 +2,7 @@
 
 import numpy as np
 
+import nibabel as nib
 from nilearn.datasets import fetch_atlas_basc_multiscale_2015
 
 from ..utils import make_masker_from_atlas
@@ -11,7 +12,8 @@ def extract_timeseries(func,
                        atlas=fetch_atlas_basc_multiscale_2015().scale064,
                        confounds=None,
                        memory=None,
-                       memory_level=1):
+                       memory_level=1,
+                       duration=None):
     """Extract time series for a list of functional volume.
 
     Parameters
@@ -33,14 +35,11 @@ def extract_timeseries(func,
     memory_level : integer, optional (default=1)
         Rough estimator of the amount of memory used by caching. Higher value
         means more memory for caching.
-
-    n_jobs : integer, optional (default=1)
-        Used to process several patients in parallel.
-        If -1, then the number of jobs is set to the number of
-        cores.
-
+    
+    duration : float
+        The duration of timeseries to be extracted, measured in seconds.
     """
-
+    TR = 1.992 # s
     masker = make_masker_from_atlas(atlas, memory=memory,
                                     memory_level=memory_level)
     masker.fit()
@@ -50,4 +49,14 @@ def extract_timeseries(func,
     else:
         confounds_ = None
 
-    return masker.transform(func, confounds=confounds_)
+    func_img = nib.load(func)
+
+    if duration is not None:
+        # how many slices to keep
+        n_slices = int(duration / TR)
+        func_img = func_img.slicer[:, :, :, :n_slices]
+
+        if confounds_ is not None:
+            confounds_ = confounds_[:n_slices, :]
+
+    return masker.transform(func_img, confounds=confounds_)
