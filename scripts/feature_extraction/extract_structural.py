@@ -21,13 +21,13 @@ N_CORTICAL_FEATURES = 5124
 # list of subjects that we have connectivity data for
 subjects = [d[4:] for d in os.listdir(CAMCAN_CONNECTIVITY) if isdir(join(CAMCAN_CONNECTIVITY, d))]
 
-# structural_data = Parallel(n_jobs=N_JOBS, verbose=1)(
-#                           delayed(get_structural_data)(CAMCAN_FREESURFER, s, OUT_DIR)
-#                           for s in subjects)
+structural_data = Parallel(n_jobs=N_JOBS, verbose=1)(
+                          delayed(get_structural_data)(CAMCAN_FREESURFER, s, OUT_DIR)
+                          for s in subjects)
 
 # some subjects had problems during intial segmentation, fixed files lie in a different folder
 CAMCAN_FREESURFER_FIXED = '/storage/tompouce/okozynet/camcan/freesurfer'
-subjects_fixed = [d for d in os.listdir(CAMCAN_FREESURFER_FIXED) if isdir(join(CAMCAN_FREESURFER_FIXED, d))]
+subjects_fixed = ['CC410354']
 
 structural_data = Parallel(n_jobs=N_JOBS, verbose=1)(
                           delayed(get_structural_data)(CAMCAN_FREESURFER_FIXED, s, OUT_DIR)
@@ -44,7 +44,7 @@ area_failed = []
 thickness_failed = []
 volume_failed = []
 
-for s in subjects_fixed:
+for s in subjects:
     subject_dir = join(OUT_DIR, s)
     
     try:
