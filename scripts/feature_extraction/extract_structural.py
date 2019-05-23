@@ -21,9 +21,17 @@ N_CORTICAL_FEATURES = 5124
 # list of subjects that we have connectivity data for
 subjects = [d[4:] for d in os.listdir(CAMCAN_CONNECTIVITY) if isdir(join(CAMCAN_CONNECTIVITY, d))]
 
+# structural_data = Parallel(n_jobs=N_JOBS, verbose=1)(
+#                           delayed(get_structural_data)(CAMCAN_FREESURFER, s, OUT_DIR)
+#                           for s in subjects)
+
+# some subjects had problems during intial segmentation, fixed files lie in a different folder
+CAMCAN_FREESURFER_FIXED = '/storage/tompouce/okozynet/camcan/freesurfer'
+subjects_fixed = [d for d in os.listdir(CAMCAN_FREESURFER_FIXED) if isdir(join(CAMCAN_FREESURFER_FIXED, d))]
+
 structural_data = Parallel(n_jobs=N_JOBS, verbose=1)(
-                           delayed(get_structural_data)(CAMCAN_FREESURFER, s, OUT_DIR)
-                           for s in subjects)
+                          delayed(get_structural_data)(CAMCAN_FREESURFER_FIXED, s, OUT_DIR)
+                          for s in subjects_fixed)
 
 subjects = tuple(d for d in os.listdir(OUT_DIR) if isdir(join(OUT_DIR, d)))
 print(f'Found {len(subjects)} subjects')
@@ -36,7 +44,7 @@ area_failed = []
 thickness_failed = []
 volume_failed = []
 
-for s in subjects:
+for s in subjects_fixed:
     subject_dir = join(OUT_DIR, s)
     
     try:
@@ -70,6 +78,7 @@ for s in subjects:
             volume_data = volume
         else:
             volume_data = pd.concat([volume_data, volume])
+
     except FileNotFoundError:
         print(f'Cannot find volume file for subject {s}')
         volume_failed.append(s)
@@ -78,6 +87,7 @@ print('Failed to load area data for\n', area_failed)
 print('Failed to load thickness data for\n', thickness_failed)
 print('Failed to load volume data for\n', volume_failed)
 
-area_data.to_pickle(join(OUT_DIR, 'area_data.gzip'), compression='gzip')
-thickness_data.to_pickle(join(OUT_DIR, 'thickness_data.gzip'), compression='gzip')
-volume_data.to_pickle(join(OUT_DIR, 'volume_data.gzip'), compression='gzip')
+out_file = join(OUT_DIR, 'structural_data.h5')
+area_data.to_hdf(out_file, key='area', complevel=9)
+thickness_data.to_hdf(out_file, key='thickness', complevel=9)
+volume_data.to_hdf(out_file, key='volume', complevel=9)
