@@ -88,17 +88,17 @@ data_ref = {
     'MEG, Cortical Thickness Stacked-multimodal': [('thickness', thickness_data), ('meg', meg_data)],
     'MEG, Subcortical Volumes Stacked-multimodal': [('volume', volume_data), ('meg', meg_data)],
     'MEG, BASC 197 tan Stacked-multimodal': [('basc', connect_data_tangent_basc), ('meg', meg_data)],
-    'MEG, MODL 256 tan Stacked-multimodal': [('modl', connect_data_tangent_modl), ('meg', meg_data)],
+    'MEG, MODL 256 r2z Stacked-multimodal': [('modl', connect_data_r2z_modl), ('meg', meg_data)],
     'MRI Stacked': [('area', area_data), ('thickness', thickness_data), ('volume', volume_data)],
-    'fMRI Stacked': [('basc', connect_data_tangent_basc), ('modl', connect_data_tangent_modl)],
+    'fMRI Stacked': [('basc', connect_data_tangent_basc), ('modl', connect_data_r2z_modl)],
     'MRI, fMRI Stacked-multimodal': [('area', area_data), ('thickness', thickness_data), ('volume', volume_data),
-                                     ('basc', connect_data_tangent_basc), ('modl', connect_data_tangent_modl)],
+                                     ('basc', connect_data_tangent_basc), ('modl', connect_data_r2z_modl)],
     'MEG, MRI Stacked-multimodal': [('area', area_data), ('thickness', thickness_data), ('volume', volume_data),
                                     ('meg', meg_data)],
-    'MEG, fMRI Stacked-multimodal': [('basc', connect_data_tangent_basc), ('modl', connect_data_tangent_modl),
+    'MEG, fMRI Stacked-multimodal': [('basc', connect_data_tangent_basc), ('modl', connect_data_r2z_modl),
                                      ('meg', meg_data)],
     'MEG, MRI, fMRI Stacked-multimodal': [('area', area_data), ('thickness', thickness_data), ('volume', volume_data),
-                                          ('basc', connect_data_tangent_basc), ('modl', connect_data_tangent_modl),
+                                          ('basc', connect_data_tangent_basc), ('modl', connect_data_r2z_modl),
                                           ('meg', meg_data)]
 }
 
