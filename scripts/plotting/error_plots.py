@@ -17,7 +17,7 @@ keys = data.columns
 # remove column with the original age
 keys = keys[1:]
 
-title = 'AE vs Age'
+title = 'Absolute Error Depending on Subject\'s Age'
 ylim = (-2, 55)
 xlim = None
 out_folder = os.path.join(FIG_OUT_PATH, 'ae_vs_age')
@@ -66,6 +66,7 @@ if os.path.exists(out_folder):
 else:
     os.mkdir(out_folder)
 
+title = 'Absolute Error'
 for key1, key2 in combinations(keys, r=2):
     plt.close()
     fig, ax = plt.subplots()

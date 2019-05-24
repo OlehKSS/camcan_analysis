@@ -14,6 +14,7 @@ N_JOBS = 4
 PANDAS_OUT_FILE = '../../data/age_prediction_exp_data.h5'
 # store mae, learning curves for summary plots
 regression_mae = pd.DataFrame(columns=range(0, CV), dtype=float)
+regression_r2 = pd.DataFrame(columns=range(0, CV), dtype=float)
 learning_curves = {}
 
 # read information about subjects
@@ -87,17 +88,17 @@ data_ref = {
     'MEG, Cortical Thickness Stacked-multimodal': [('thickness', thickness_data), ('meg', meg_data)],
     'MEG, Subcortical Volumes Stacked-multimodal': [('volume', volume_data), ('meg', meg_data)],
     'MEG, BASC 197 tan Stacked-multimodal': [('basc', connect_data_tangent_basc), ('meg', meg_data)],
-    'MEG, MODL 256 tan Stacked-multimodal': [('modl', connect_data_tangent_modl), ('meg', meg_data)],
+    'MEG, MODL 256 r2z Stacked-multimodal': [('modl', connect_data_r2z_modl), ('meg', meg_data)],
     'MRI Stacked': [('area', area_data), ('thickness', thickness_data), ('volume', volume_data)],
-    'fMRI Stacked': [('basc', connect_data_tangent_basc), ('modl', connect_data_tangent_modl)],
+    'fMRI Stacked': [('basc', connect_data_tangent_basc), ('modl', connect_data_r2z_modl)],
     'MRI, fMRI Stacked-multimodal': [('area', area_data), ('thickness', thickness_data), ('volume', volume_data),
-                                     ('basc', connect_data_tangent_basc), ('modl', connect_data_tangent_modl)],
+                                     ('basc', connect_data_tangent_basc), ('modl', connect_data_r2z_modl)],
     'MEG, MRI Stacked-multimodal': [('area', area_data), ('thickness', thickness_data), ('volume', volume_data),
                                     ('meg', meg_data)],
-    'MEG, fMRI Stacked-multimodal': [('basc', connect_data_tangent_basc), ('modl', connect_data_tangent_modl),
+    'MEG, fMRI Stacked-multimodal': [('basc', connect_data_tangent_basc), ('modl', connect_data_r2z_modl),
                                      ('meg', meg_data)],
     'MEG, MRI, fMRI Stacked-multimodal': [('area', area_data), ('thickness', thickness_data), ('volume', volume_data),
-                                          ('basc', connect_data_tangent_basc), ('modl', connect_data_tangent_modl),
+                                          ('basc', connect_data_tangent_basc), ('modl', connect_data_r2z_modl),
                                           ('meg', meg_data)]
 }
 
@@ -118,6 +119,7 @@ for key, data in data_ref.items():
     print('%s MAE: %.2f, STD %.2f' % (key, mae, std))
 
     regression_mae.loc[key] = arr_mae
+    regression_r2.loc[key] = arr_r2
     subjects_predictions.loc[df_pred.index, key] = df_pred[0]
     learning_curves[key] = {
         'train_sizes': train_sizes,
@@ -133,3 +135,4 @@ with open('../../data/learning_curves.pkl', 'wb') as handle:
 
 subjects_predictions.to_hdf(PANDAS_OUT_FILE, key='predictions', complevel=9)
 regression_mae.to_hdf(PANDAS_OUT_FILE, key='regression', complevel=9)
+regression_r2.to_hdf(PANDAS_OUT_FILE, key='r2', complevel=9)

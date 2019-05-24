@@ -40,8 +40,8 @@ for key in keys:
     plt.plot([y.min(), y.max()], [y.min(), y.max()], '-', lw=3, color='green')
     plt.plot([y.min(), y.max()], [y.min() - mae, y.max() - mae], 'k--', lw=3, color='red')
     plt.plot([y.min(), y.max()], [y.min() + mae, y.max() + mae], 'k--', lw=3, color='red')
-    plt.xlabel('Chronological Age')
-    plt.ylabel('Predicted Age')
+    plt.xlabel('Chronological Age (Years)')
+    plt.ylabel('Predicted Age (Years)')
     plt.grid()
 
     name = f'age_pred_{key.replace(" ", "-")}.{OUT_FTYPE}'

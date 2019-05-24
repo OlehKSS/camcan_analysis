@@ -33,8 +33,8 @@ for a, c in product(atlases, connectivities):
 
 title = f'Age Prediction MAE vs Timeseries Duration'
 plt.title(title)
-plt.xlabel('Timeseries Duration, s')
-plt.ylabel('MAE, years')
+plt.xlabel('Timeseries Duration (Seconds)')
+plt.ylabel('MAE (Years)')
 plt.grid()
 plt.legend()
 name = f'age-vs-ts_duration.{OUT_FTYPE}'
