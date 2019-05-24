@@ -17,7 +17,6 @@ keys = data.columns
 # remove column with the original age
 keys = keys[1:]
 
-title = 'Absolute Error Depending on Subject\'s Age'
 ylim = (-2, 55)
 xlim = None
 out_folder = os.path.join(FIG_OUT_PATH, 'ae_vs_age')
@@ -35,9 +34,9 @@ for key1 in keys:
     plt.close()
     plt.figure()
     plt.scatter(age, abs_errors, edgecolors='black')
-    plt.title(title)
+    plt.title(key1)
     plt.xlabel('Age (Years)')
-    plt.ylabel(key1)
+    plt.ylabel('Absolute Error (Years)')
     plt.grid()
 
     if xlim is not None:
@@ -51,7 +50,6 @@ for key1 in keys:
 # Plot errors of predictions from different modalities versus each other
 data = data.dropna()
 age = data.age.values
-color_map = plt.cm.viridis((age - min(age)) / max(age))
 keys = data.columns
 # remove column with the original age
 keys = keys[1:]
@@ -66,16 +64,16 @@ if os.path.exists(out_folder):
 else:
     os.mkdir(out_folder)
 
-title = 'Absolute Error'
+title = 'Absolute Error Correlation'
 for key1, key2 in combinations(keys, r=2):
     plt.close()
     fig, ax = plt.subplots()
     x_values = np.abs(data[key1].values - age)
     y_values = np.abs(data[key2].values - age)
-    plt.scatter(x_values, y_values, edgecolors='black', color=color_map)
+    plt.scatter(x_values, y_values, edgecolors='black', c=age, cmap=plt.cm.viridis_r)
     plt.title(title)
-    plt.xlabel(key1)
-    plt.ylabel(key2)
+    plt.xlabel(key1 + ', AE (Years)')
+    plt.ylabel(key2 + ', AE (Years)')
 
     if xlim is not None:
         xlim_ = (xlim[0] - 1, xlim[1] + 1)
@@ -90,7 +88,7 @@ for key1, key2 in combinations(keys, r=2):
     ax.set(xlim=xlim_, ylim=ylim_)
     ax.plot(ax.get_xlim(), ax.get_ylim(), ls='--', c='.3')
     plt.grid()
-    # plt.colorbar()
+    plt.colorbar()
 
     name = f'AE_{key1.replace(" ", "-")}_vs_{key2.replace(" ", "-")}.{OUT_FTYPE}'
     plt.savefig(os.path.join(out_folder, name), bbox_inches='tight')
