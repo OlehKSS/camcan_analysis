@@ -21,6 +21,7 @@ else:
     os.mkdir(out_folder)
 
 all_regressions = pd.read_hdf(PREDICTIONS, key='regression')
+all_r2_scores = pd.read_hdf(PREDICTIONS, key='r2')
 
 # Plot summary boxplot
 keys = all_regressions.index
@@ -44,4 +45,5 @@ summary = pd.DataFrame(index=all_regressions.index,
                        columns=['mae', 'std'], dtype=float)
 summary['mae'] = all_regressions.mean(axis=1)
 summary['std'] = all_regressions.std(axis=1)
+summary['r2'] = all_r2_scores.mean(axis=1)
 summary.to_csv('../../data/summary.csv')
