@@ -10,7 +10,7 @@ import seaborn as sns
 
 FIG_OUT_PATH = '../../data/figures/'
 PREDICTIONS = '../../data/age_prediction_exp_data.h5'
-OUT_FTYPE = 'png'
+OUT_FTYPE = 'pdf'
 
 data = pd.read_hdf(PREDICTIONS, key='predictions')
 data = data.dropna()
@@ -78,7 +78,7 @@ for key in keys:
             bound_mid = 0.5 * (bound_low + bound_high)
             x_ticks.append(bound_mid)
         if x_labels is not None:
-            x_labels.append(f'{int(bound_low)}-{int(bound_high)}')
+            x_labels.append(f'{int(bound_low)}-{int(bound_high - 1)}')
     
     line_style = '--o' if 'Stacked' in key else '-o'
     plt.plot(x_ticks, y_key, line_style, color=plt_colors[key], label=plt_labels[key])
