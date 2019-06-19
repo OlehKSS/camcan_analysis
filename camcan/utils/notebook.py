@@ -195,6 +195,7 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
             info = raw.info
             picks = mne.pick_types(info, meg='mag')
             # if there is no subject information than we'll skip that entry
+            # select only magnetometers data
             covs = np.array(tuple(d['covs'][:, picks][:, :, picks] for d in meg_data if 'subject' in d))
             spoc = SPoC(covs=covs, fbands=fbands, spoc=True, n_components=len(picks), alpha=0.01)
 

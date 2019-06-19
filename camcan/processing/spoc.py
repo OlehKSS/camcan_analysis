@@ -61,6 +61,14 @@ class SPoC(TransformerMixin):
         return self
 
     def transform(self, X):
+        """
+        Return age-related patterns in MEG data.
+
+        Parameters
+        ----------
+        X: numpy.ndarray
+            List of subject to get patterns for.
+        """
         if isinstance(X, np.ndarray) and not np.issubdtype(X.dtype, np.integer):
             X = X.astype('int')
             X = X[:, 0]

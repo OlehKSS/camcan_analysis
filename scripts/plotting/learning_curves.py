@@ -8,7 +8,7 @@ import numpy as np
 
 FIG_OUT_PATH = '../../data/figures/'
 LEARNING_CURVES = '../../data/learning_curves.pkl'
-OUT_FTYPE = 'png'
+OUT_FTYPE = 'pdf'
 
 with open(LEARNING_CURVES, 'rb') as handle:
     data = pkl.load(handle)
@@ -34,8 +34,8 @@ for key in data:
     if ylim is not None:
         plt.ylim(*ylim)
 
-    plt.xlabel('Training examples')
-    plt.ylabel('Score')
+    plt.xlabel('Number of Training Samples')
+    plt.ylabel('MAE (Years)')
 
     train_scores = -train_scores
     test_scores = -test_scores
