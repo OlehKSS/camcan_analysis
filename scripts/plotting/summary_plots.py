@@ -1,9 +1,6 @@
 import os
-import pickle as pkl
-import shutil
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 import seaborn as sns
 
@@ -39,10 +36,10 @@ ax = sns.boxplot(data=all_regressions.transpose(),
                  orient='h')
 ax.set_title(title)
 ax.set(xlabel='Mean Absolute Error (Years)')
-ax.spines['bottom'].set_color('black') 
-ax.spines['top'].set_color('black')  
-ax.spines['right'].set_color('black') 
-ax.spines['left'].set_color('black') 
+ax.spines['bottom'].set_color('black')
+ax.spines['top'].set_color('black')
+ax.spines['right'].set_color('black')
+ax.spines['left'].set_color('black')
 ax.tick_params(axis='x', colors='black', bottom=True)
 
 name = f'combined_plot.{OUT_FTYPE}'

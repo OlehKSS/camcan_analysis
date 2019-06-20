@@ -3,7 +3,7 @@ import copy as cp
 from mne import EvokedArray
 import numpy as np
 from scipy.linalg import pinv, eigh
-from sklearn.base import TransformerMixin, BaseEstimator
+from sklearn.base import TransformerMixin
 
 
 def shrink(cov, alpha):
@@ -25,7 +25,7 @@ class SPoC(TransformerMixin):
     """
     def __init__(self, covs=None, fbands=None,
                  spoc=True, n_components=2, alpha=0):
-        self.covs = covs # (sub,fb,chan,chan)
+        self.covs = covs  # (sub,fb,chan,chan)
         self.fbands = fbands
         self.spoc = spoc
         self.n_components = n_components
@@ -36,7 +36,8 @@ class SPoC(TransformerMixin):
         self.patterns_ = []
         self.filters_ = []
 
-        if isinstance(X, np.ndarray) and not np.issubdtype(X.dtype, np.integer):
+        if isinstance(X, np.ndarray) and\
+           not np.issubdtype(X.dtype, np.integer):
             X = X.astype('int')
             X = X[:, 0]
 
@@ -61,7 +62,8 @@ class SPoC(TransformerMixin):
         return self
 
     def transform(self, X):
-        if isinstance(X, np.ndarray) and not np.issubdtype(X.dtype, np.integer):
+        if isinstance(X, np.ndarray) and\
+           not np.issubdtype(X.dtype, np.integer):
             X = X.astype('int')
             X = X[:, 0]
 
@@ -69,7 +71,8 @@ class SPoC(TransformerMixin):
         for fb in range(len(self.fbands)):
             filters = self.filters_[fb][:self.n_components]
             # (comp,chan)
-            this_Xf = [np.diag(filters @ self.covs[sub, fb] @ filters.T) for sub in X]
+            this_Xf = [np.diag(filters @ self.covs[sub, fb] @ filters.T)
+                       for sub in X]
             Xf[:, fb, :] = this_Xf
         Xf = np.log10(Xf, out=Xf)  # (fb, sub, compo,)
         Xf = Xf.reshape(X.size, -1)
@@ -132,4 +135,3 @@ class SPoC(TransformerMixin):
             mask=mask, outlines=outlines, contours=contours,
             image_interp=image_interp, show=show, average=average,
             head_pos=head_pos, axes=axes)
-

@@ -228,7 +228,6 @@ class _BaseStacking(_BaseComposition, MetaEstimatorMixin, TransformerMixin,
                                             verbose=self.verbose)
             X_meta.append(temp_x_meta)
 
-
         # Only not None estimators will be used in transform. Remove the None
         # from the method as well.
         self.method_estimators_ = [meth for meth in self.method_estimators_

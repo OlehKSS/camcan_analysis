@@ -1,8 +1,7 @@
-"""Script for extracting structural data from the data processed with FreeSurfer"""
+"""Script for extracting structural data from FreeSurfer outputs"""
 import os
 from os.path import isdir, join
 
-import joblib
 from joblib import Parallel, delayed
 import numpy as np
 import pandas as pd
@@ -19,13 +18,16 @@ VOLUME_FILE = 'aseg.csv'
 N_JOBS = 10
 N_CORTICAL_FEATURES = 5124
 # list of subjects that we have connectivity data for
-subjects = [d[4:] for d in os.listdir(CAMCAN_CONNECTIVITY) if isdir(join(CAMCAN_CONNECTIVITY, d))]
+subjects = [d[4:] for d in os.listdir(CAMCAN_CONNECTIVITY)
+            if isdir(join(CAMCAN_CONNECTIVITY, d))]
 
-structural_data = Parallel(n_jobs=N_JOBS, verbose=1)(
-                          delayed(get_structural_data)(CAMCAN_FREESURFER, s, OUT_DIR)
-                          for s in subjects)
+delayed_functions = (delayed(get_structural_data)(CAMCAN_FREESURFER,
+                                                  s, OUT_DIR)
+                     for s in subjects)
+structural_data = Parallel(n_jobs=N_JOBS, verbose=1)(delayed_functions)
 
-# some subjects had problems during intial segmentation, fixed files lie in a different folder
+# some subjects had problems during intial segmentation,
+# fixed files lie in a different folder
 CAMCAN_FREESURFER_FIXED = '/storage/tompouce/okozynet/camcan/freesurfer'
 subjects_fixed = ['CC410354']
 

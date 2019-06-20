@@ -70,7 +70,8 @@ for key1, key2 in combinations(keys, r=2):
     fig, ax = plt.subplots()
     x_values = np.abs(data[key1].values - age)
     y_values = np.abs(data[key2].values - age)
-    plt.scatter(x_values, y_values, edgecolors='black', c=age, cmap=plt.cm.viridis_r)
+    plt.scatter(x_values, y_values, edgecolors='black',
+                c=age, cmap=plt.cm.viridis_r)
     plt.title(title)
     plt.xlabel(key1 + ', AE (Years)')
     plt.ylabel(key2 + ', AE (Years)')
@@ -79,7 +80,7 @@ for key1, key2 in combinations(keys, r=2):
         xlim_ = (xlim[0] - 1, xlim[1] + 1)
     else:
         xlim_ = (data[key1].min() - 1, data[key1].max() + 1)
-    
+
     if ylim is not None:
         ylim_ = (ylim[0] - 1, ylim[1] + 1)
     else:
@@ -90,5 +91,6 @@ for key1, key2 in combinations(keys, r=2):
     plt.grid()
     plt.colorbar()
 
-    name = f'AE_{key1.replace(" ", "-")}_vs_{key2.replace(" ", "-")}.{OUT_FTYPE}'
+    name = f'AE_{key1.replace(" ", "-")}_vs_{key2.replace(" ", "-")}'\
+           f'.{OUT_FTYPE}'
     plt.savefig(os.path.join(out_folder, name), bbox_inches='tight')

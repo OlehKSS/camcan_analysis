@@ -4,6 +4,7 @@ import os
 
 from ..utils import run_fs
 
+
 def get_structural_data(subjects_dir, subject, out_dir):
     """Extract structural data (cortical sickness, cortical surface area,
     and subcortical volumes) from FreeSurfer processing output.
@@ -18,8 +19,9 @@ def get_structural_data(subjects_dir, subject, out_dir):
         The output directory.
     """
     out_files = get_cortex_data(subjects_dir, subject, out_dir)
-    out_files["aseg" + "_file"] = get_volumes_data(subjects_dir, subject, out_dir)
-    
+    out_files["aseg" + "_file"] = get_volumes_data(subjects_dir, subject,
+                                                   out_dir)
+
     return out_files
 
 
@@ -34,7 +36,7 @@ def get_volumes_data(subjects_dir, subject, out_dir):
         The subject, for which data should be extracted.
     out_dir : str
         The output directory.
-    
+
     Returns
     -------
     out_file : str
@@ -44,9 +46,10 @@ def get_volumes_data(subjects_dir, subject, out_dir):
 
     if not os.path.isdir(subject_dir):
         os.makedirs(subject_dir)
-    
+
     out_file = os.path.join(subject_dir, 'aseg.csv')
-    cmd = f'python2 $FREESURFER_HOME/bin/asegstats2table --subjects {subject} --tablefile {out_file}'\
+    cmd = 'python2 $FREESURFER_HOME/bin/asegstats2table'\
+          f' --subjects {subject} --tablefile {out_file}'\
           ' -d comma --meas volume'
     print(subject, out_file)
     print(cmd)
@@ -81,13 +84,13 @@ def get_cortex_data(subjects_dir, subject, out_dir):
         subject_dir = os.path.join(out_dir, subject)
 
         if not os.path.isdir(subject_dir):
-                os.makedirs(subject_dir)
-        
+            os.makedirs(subject_dir)
+
         out_file = os.path.join(subject_dir, f'{h}.{m}.mgh')
         out_files[h + '_' + m + '_file'] = out_file
 
-        cmd = f'mris_preproc --s {subject} --target fsaverage --hemi {h} ' \
+        cmd = f'mris_preproc --s {subject} --target fsaverage --hemi {h} '\
               f'--meas {m} --out {out_file}'
         run_fs(cmd, env={'SUBJECTS_DIR': subjects_dir})
-    
+
     return out_files

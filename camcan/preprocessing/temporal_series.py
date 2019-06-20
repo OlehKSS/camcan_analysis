@@ -35,11 +35,11 @@ def extract_timeseries(func,
     memory_level : integer, optional (default=1)
         Rough estimator of the amount of memory used by caching. Higher value
         means more memory for caching.
-    
+
     duration : float
         The duration of timeseries to be extracted, measured in seconds.
     """
-    TR = 1.992 # s
+    TR = 1.992  # s
     masker = make_masker_from_atlas(atlas, memory=memory,
                                     memory_level=memory_level)
     masker.fit()

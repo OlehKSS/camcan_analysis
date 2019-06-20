@@ -35,11 +35,6 @@ def camcan_prediction_uni_out(x, y, regr_uni_list, results_path,
     mae_list = []
     evs_list = []
     r2s_list = []
-
-    mse_mt_list = []
-    mae_mt_list = []
-    evs_mt_list = []
-    r2s_mt_list = []
     y_test_array = []
     y_predict_array = []
 
@@ -101,6 +96,7 @@ def plot_regression(y_target, y_predict, fig_name, fig_path):
     ax.set_ylabel('Predicted')
     plt.savefig(os.path.join(fig_path, fig_name))
     plt.close()
+
 
 ###############################################################################
 # CamCan data
