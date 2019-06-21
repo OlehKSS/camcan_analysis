@@ -92,12 +92,13 @@ class SPoC(TransformerMixin):
         return self
 
     def transform(self, X):
-        """Transform data using filters found by the fit method.
+        """
+        Return age-related patterns in MEG data.
 
         Parameters
         ----------
-        X: numpy.ndarray | list | tuple
-            List of subjects in the training data.
+        X: numpy.ndarray | list(int) | tuple(int)
+            List of subject to get patterns for.
 
         """
         if isinstance(X, np.ndarray) and\

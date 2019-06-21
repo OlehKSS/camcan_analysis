@@ -24,7 +24,7 @@ name_map = {'basc197': 'BASC 197', 'modl256': 'MODL 256',
 plt.figure()
 
 for a, c in product(atlases, connectivities):
-    label = f'Connectivity Matrix, {name_map[a]} {name_map[c]}'
+    label = f'{name_map[a]} {name_map[c]}'
     data = all_regressions.loc[(all_regressions.connect == c) &
                                (all_regressions.atlas == a), 'MAE']
     plt.plot(durations, data, '.-', label=label)
