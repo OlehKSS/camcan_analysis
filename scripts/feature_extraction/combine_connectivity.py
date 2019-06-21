@@ -1,5 +1,5 @@
 import os
-from os.path import join, isdir
+from os.path import join
 
 import numpy as np
 import pandas as pd
@@ -12,7 +12,6 @@ ATLASES = ['modl256', 'basc197']
 CONNECTIVITY_KINDS = ('correlation', 'tangent')
 # path for the different kind of connectivity matrices
 CAMCAN_TIMESERIES = '/storage/tompouce/okozynet/camcan/timeseries'
-CAMCAN_PATIENTS_EXCLUDED = None
 OUT_DIR = '/storage/tompouce/okozynet/camcan/connectivity'
 
 for connect_kind in CONNECTIVITY_KINDS:
@@ -27,16 +26,17 @@ for connect_kind in CONNECTIVITY_KINDS:
         print(f'Reading timeseries files for {sel_atlas}')
 
         dataset = load_camcan_timeseries_rest(data_dir=CAMCAN_TIMESERIES,
-                                            atlas=sel_atlas,
-                                            patients_excluded=CAMCAN_PATIENTS_EXCLUDED)
-        connectivities = extract_connectivity(dataset.timeseries, kind=connect_kind)
+                                              atlas=sel_atlas)
+        connectivities = extract_connectivity(dataset.timeseries,
+                                              kind=connect_kind)
         connect_data = None
         subjects = tuple(s[4:] for s in dataset.subject_id)
 
         for i, s in enumerate(subjects):
             if connect_data is None:
+                columns = np.arange(start=0, stop=len(connectivities[i]))
                 connect_data = pd.DataFrame(index=subjects,
-                                            columns=np.arange(start=0, stop=len(connectivities[i])),
+                                            columns=columns,
                                             dtype=float)
                 if connect_kind == 'correlation':
                     # save and apply Fisher's transform

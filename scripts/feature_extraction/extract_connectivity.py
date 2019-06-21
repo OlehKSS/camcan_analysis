@@ -10,7 +10,7 @@ from camcan.datasets import load_camcan_timeseries_rest
 from camcan.preprocessing import extract_connectivity
 
 import joblib
-from joblib import Parallel, delayed, Memory
+from joblib import Parallel, delayed
 
 # path to the Cam-CAN data set
 CAMCAN_TIMESERIES = '/home/mehdi/data/camcan/camcan_timeseries'

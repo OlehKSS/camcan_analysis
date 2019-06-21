@@ -21,8 +21,8 @@ N_CORTICAL_FEATURES = 5124
 subjects = [d[4:] for d in os.listdir(CAMCAN_CONNECTIVITY)
             if isdir(join(CAMCAN_CONNECTIVITY, d))]
 
-delayed_functions = (delayed(get_structural_data)(CAMCAN_FREESURFER,
-                                                  s, OUT_DIR)
+get_str_data_del = delayed(get_structural_data)
+delayed_functions = (get_str_data_del(CAMCAN_FREESURFER, s, OUT_DIR)
                      for s in subjects)
 structural_data = Parallel(n_jobs=N_JOBS, verbose=1)(delayed_functions)
 
@@ -31,9 +31,9 @@ structural_data = Parallel(n_jobs=N_JOBS, verbose=1)(delayed_functions)
 CAMCAN_FREESURFER_FIXED = '/storage/tompouce/okozynet/camcan/freesurfer'
 subjects_fixed = ['CC410354']
 
-structural_data = Parallel(n_jobs=N_JOBS, verbose=1)(
-                          delayed(get_structural_data)(CAMCAN_FREESURFER_FIXED, s, OUT_DIR)
-                          for s in subjects_fixed)
+delayed_functions = (get_str_data_del(CAMCAN_FREESURFER_FIXED, s, OUT_DIR)
+                     for s in subjects)
+structural_data = Parallel(n_jobs=N_JOBS, verbose=1)(delayed_functions)
 
 subjects = tuple(d for d in os.listdir(OUT_DIR) if isdir(join(OUT_DIR, d)))
 print(f'Found {len(subjects)} subjects')
@@ -48,12 +48,15 @@ volume_failed = []
 
 for s in subjects:
     subject_dir = join(OUT_DIR, s)
-    
+
     try:
         t_area = get_area(subject_dir, n_points=N_CORTICAL_FEATURES)
 
         if area_data is None:
-            area_data = pd.DataFrame(index=subjects, columns=np.arange(start=0, stop=N_CORTICAL_FEATURES), dtype=float)
+            area_data = pd.DataFrame(
+                index=subjects,
+                columns=np.arange(start=0, stop=N_CORTICAL_FEATURES),
+                dtype=float)
             area_data.loc[s] = t_area
         else:
             area_data.loc[s] = t_area
@@ -63,9 +66,12 @@ for s in subjects:
 
     try:
         t_thickness = get_thickness(subject_dir, n_points=N_CORTICAL_FEATURES)
-        
+
         if thickness_data is None:
-            thickness_data = pd.DataFrame(index=subjects, columns=np.arange(start=0, stop=N_CORTICAL_FEATURES), dtype=float)
+            thickness_data = pd.DataFrame(
+                index=subjects,
+                columns=np.arange(start=0, stop=N_CORTICAL_FEATURES),
+                dtype=float)
             thickness_data.loc[s] = t_thickness
         else:
             thickness_data.loc[s] = t_thickness
@@ -75,7 +81,7 @@ for s in subjects:
 
     try:
         volume = pd.read_csv(join(subject_dir, VOLUME_FILE), index_col=0)
-        
+
         if volume_data is None:
             volume_data = volume
         else:

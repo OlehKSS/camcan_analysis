@@ -4,28 +4,29 @@ results with different atlases and dump the results somewhere.
 """
 
 import os
+from os.path import join
 
 from camcan.datasets import load_camcan_rest
 from camcan.preprocessing import extract_timeseries
 
-from nilearn.datasets import (fetch_atlas_basc_multiscale_2015,
-                              fetch_atlas_msdl)
+from nilearn.datasets import fetch_atlas_basc_multiscale_2015
 
 import joblib
 from joblib import Parallel, delayed, Memory
 
 
 # path to the Cam-CAN data set
+STORAGE_HOME = '/storage/tompouce/okozynet/camcan'
 CAMCAN_PREPROCESSED = '/storage/data/camcan/camcan_preproc'
-CAMCAN_PATIENTS_EXCLUDED = '/storage/tompouce/okozynet/camcan/excluded_patients.csv'
-CAMCAN_TIMESERIES = '/storage/tompouce/okozynet/camcan/timeseries'
+CAMCAN_PATIENTS_EXCLUDED = join(STORAGE_HOME, 'excluded_patients.csv')
+CAMCAN_TIMESERIES = join(STORAGE_HOME, 'timeseries')
 # path to the atlases
 # modl atlas from task-fMRI was used
 ATLASES = ['/storage/store/derivatives/OpenNeuro/modl/256/0.0001/maps.nii.gz',
            fetch_atlas_basc_multiscale_2015().scale197]
 ATLASES_DESCR = ['modl256', 'basc197']
 # path for the caching
-CACHE_TIMESERIES = '/storage/tompouce/okozynet/camcan/cache/timeseries'
+CACHE_TIMESERIES = join(STORAGE_HOME, 'cache/timeseries')
 if not os.path.exists(CACHE_TIMESERIES):
     os.makedirs(CACHE_TIMESERIES)
 MEMORY = Memory(CACHE_TIMESERIES)

@@ -22,6 +22,7 @@ VERSION = '0.0.1dev'
 
 
 def configuration(parent_package='', top_path=None):
+    """Configure package."""
     if os.path.exists('MANIFEST'):
         os.remove('MANIFEST')
 

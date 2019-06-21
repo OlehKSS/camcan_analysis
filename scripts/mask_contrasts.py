@@ -1,3 +1,4 @@
+"""Mask contrasts."""
 import argparse
 
 from camcan import datasets
