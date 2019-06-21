@@ -1,7 +1,8 @@
 """
+Extract connectivity from fMRI data.
+
 This script aimed at extracting the connectivity matrices from the time
 series using the Cam-CAN for different atalases and dump them somewhere.
-
 """
 
 import os
@@ -10,7 +11,7 @@ from camcan.datasets import load_camcan_timeseries_rest
 from camcan.preprocessing import extract_connectivity
 
 import joblib
-from joblib import Parallel, delayed, Memory
+from joblib import Parallel, delayed
 
 # path to the Cam-CAN data set
 CAMCAN_TIMESERIES = '/home/mehdi/data/camcan/camcan_timeseries'

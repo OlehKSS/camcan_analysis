@@ -1,6 +1,4 @@
-"""
-The :mod:`camcan.datasets` module includes utilities to load datasets.
-"""
+"""Utilities to load datasets."""
 from .camcan import load_camcan_rest
 from .camcan import load_camcan_timeseries_rest
 from .camcan import load_camcan_connectivity_rest

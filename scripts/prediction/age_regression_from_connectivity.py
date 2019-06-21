@@ -1,3 +1,4 @@
+"""Age prediction from fMRI-derived connectivity."""
 import numpy as np
 from sklearn.svm import SVR
 from sklearn.model_selection import StratifiedKFold

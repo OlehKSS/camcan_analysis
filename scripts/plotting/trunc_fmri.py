@@ -1,10 +1,8 @@
+"""Plot mean absolute error (MAE) versus fMRI timeseries duration."""
 from itertools import product
 import os
-import pickle as pkl
-import shutil
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 

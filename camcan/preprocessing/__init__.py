@@ -1,6 +1,4 @@
-"""
-The :mod:`camcan.preprocessing` module includes methods to extract time series.
-"""
+"""Tools to extract information from MRI, fMRI data."""
 from .temporal_series import extract_timeseries
 from .connectivity import extract_connectivity
 from .structural import get_structural_data

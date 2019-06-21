@@ -1,3 +1,4 @@
+"""Data processing tools."""
 from .spoc import SPoC
 from .stacking import StackingRegressor
 

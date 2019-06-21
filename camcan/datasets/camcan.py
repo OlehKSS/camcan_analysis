@@ -1,6 +1,4 @@
-"""
-Loader for the Cam-CAN data set.
-"""
+"""Loader for the Cam-CAN data set."""
 
 import re
 import glob
@@ -138,8 +136,7 @@ def _exclude_patients(data_dir, patients_excluded):
 
 
 def _check_scores(patients_info_csv, subject_ids):
-    """Private function to return scores.
-    """
+    """Private function to return scores."""
     if patients_info_csv is None:
         scores = Bunch(**{'age': [None] * len(subject_ids),
                           'hand': [None] * len(subject_ids),
@@ -171,7 +168,6 @@ def _load_camcan_scores(filename_csv, subjects_selected):
         - 'gender_text', gender of the patient.
 
     """
-
     if not isfile(filename_csv):
         raise ValueError('The file {} does not exist.'.format(filename_csv))
 
@@ -537,9 +533,6 @@ def iterate_masked_contrast_maps(contrast_name, statistic_type='z_score',
 def load_masked_contrast_maps(contrast_name, statistic_type='z_score',
                               data_dir=CAMCAN_DRAGO_STORE_CONTRASTS,
                               patients_excluded=None, mask_file=None):
-    contrasts, maskers = zip(*iterate_masked_contrast_maps(
-        contrast_name, statistic_type, data_dir,
-        patients_excluded, mask_file))
     """Load masked contrast maps for Camcan.
 
     Parameters
@@ -574,7 +567,9 @@ def load_masked_contrast_maps(contrast_name, statistic_type='z_score',
         subsequent columns contain the voxels
 
     """
-
+    contrasts, maskers = zip(*iterate_masked_contrast_maps(
+        contrast_name, statistic_type, data_dir,
+        patients_excluded, mask_file))
     return pd.concat(contrasts), maskers[0]
 
 

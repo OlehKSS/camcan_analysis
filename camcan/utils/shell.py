@@ -1,4 +1,4 @@
-"""Functions for execution of shell commands"""
+"""Functions for shell commands execution."""
 import logging
 import os
 from subprocess import run, PIPE
@@ -16,10 +16,7 @@ def run_fs(cmd, env={}, ignore_errors=False):
     ignore_errors: bool
         If True exception will be raised in case of command execution error.
         Default is False.
-    
-    Returns
-    -------
-    None
+
     """
     merged_env = os.environ
     merged_env.update(env)
@@ -31,5 +28,5 @@ def run_fs(cmd, env={}, ignore_errors=False):
     logging.info(process.stdout.decode('utf-8'))
 
     if process.returncode != 0 and not ignore_errors:
-        logging.error(f'Non zero return code: {process.returncode}. Bash: {process.stderr}, cmd: {cmd}')
-        #raise Exception(f'Non zero return code: {process.returncode}. Bash: {process.stderr}')
+        logging.error(f'Non zero return code: {process.returncode}.' +
+                      f'Bash: {process.stderr}, cmd: {cmd}')

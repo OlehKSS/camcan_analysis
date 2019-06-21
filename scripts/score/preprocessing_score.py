@@ -1,7 +1,7 @@
 #!/bin/python3
 # coding: utf-8
 
-""" Select, clean and merge score dataset from camcan directory. """
+"""Select, clean and merge score dataset from camcan directory."""
 
 # libraries
 import os
@@ -17,35 +17,36 @@ path_features = os.path.join(directory_data, 'behavioural_features.json')
 
 def get_df(path):
     """
-    Function to extract a df from the text files
+    Extract a df from the text files.
+
     : param path: string
     : return: dataframe, list of integers
     """
     size = os.path.getsize(path)
     if size == 0:
         return None
-    l = []
+    row_ids = []
     with open(path, mode="rt", encoding="utf-8") as f:
         i = 0
         for row in f:
             if "-----------------------------------------" in row:
-                l.append(i)
+                row_ids.append(i)
             i += 1
-    if len(l) == 0:
+    if len(row_ids) == 0:
         df = pd.read_csv(path, engine="python", sep="\t")
-    elif len(l) == 1:
-        df = pd.read_csv(path, skiprows=l[0]+1, sep="\t")
-    elif len(l) == 2:
-        df = pd.read_csv(path, skiprows=l[0]+1, skipfooter=i-l[1],
+    elif len(row_ids) == 1:
+        df = pd.read_csv(path, skiprows=row_ids[0]+1, sep="\t")
+    elif len(row_ids) == 2:
+        df = pd.read_csv(path, skiprows=row_ids[0]+1, skipfooter=i-row_ids[1],
                          engine="python", sep="\t")
-    elif len(l) >= 3:
-        df = pd.read_csv(path, skiprows=l[1] + 1, skipfooter=i - l[2],
-                         engine="python", sep="\t")
+    elif len(row_ids) >= 3:
+        df = pd.read_csv(path, skiprows=row_ids[1] + 1,
+                         skipfooter=i - row_ids[2], engine="python", sep="\t")
         df = df[df.columns[:2]]
-        for j in range(len(l)):
+        for j in range(len(row_ids)):
             if j % 2 == 1:
-                start = l[j] + 1
-                end = i - l[j + 1]
+                start = row_ids[j] + 1
+                end = i - row_ids[j + 1]
                 df_part = pd.read_csv(path, skiprows=start, skipfooter=end,
                                       engine="python", sep="\t")
                 _class = df_part.at[0, df_part.columns[1]].strip()
@@ -63,24 +64,26 @@ def get_df(path):
 
 def check_unicity(df, col_index):
     """
-    Function to validate and clean the dataframe
+    Validate and clean the dataframe.
+
     : param df: dataframe
     : param col_index: string (column to check)
     : return: dataframe
     """
     # check unicity
-    l = []
+    row_ids = []
     for i in df[col_index]:
         test = df.query("%s == '%s'" % (col_index, i))
         if len(test) != 1:
-            l.append(i)
-    df = df.query("%s not in %s" % (col_index, str(l)))
+            row_ids.append(i)
+    df = df.query("%s not in %s" % (col_index, str(row_ids)))
     return df
 
 
 def clean_df(df):
     """
-    Function to clean the dataframe
+    Clean the dataframe.
+
     : param df: dataframe
     : return: dataframe
     """
@@ -102,7 +105,8 @@ def clean_df(df):
 
 def merge_data(path_data, filename_participants):
     """
-    Function to merge the different datasets
+    Merge the different datasets.
+
     :param path_data: string
     :param filename_participants: string
     :return: dataframe, dictionary
@@ -145,6 +149,7 @@ def merge_data(path_data, filename_participants):
     big_df = big_df[[c for c in big_df.columns if c not in col_to_delete]]
     big_df.reset_index(drop=True, inplace=True)
     return big_df, d_features
+
 
 # merge data
 big_df, d = merge_data(directory_data, "participant_data.csv")

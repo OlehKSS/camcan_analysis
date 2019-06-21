@@ -1,5 +1,6 @@
-"""Utilities for Jupyter Notebook reports"""
+"""Utilities for Jupyter Notebook reports."""
 from itertools import combinations
+from os import path
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,22 +11,26 @@ import seaborn as sns
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import RidgeCV
-from sklearn.metrics import mean_absolute_error, explained_variance_score, r2_score
-from sklearn.model_selection import cross_val_score, cross_val_predict, learning_curve, ShuffleSplit, KFold
+from sklearn.model_selection import (cross_val_score,
+                                     cross_val_predict,
+                                     learning_curve,
+                                     ShuffleSplit,
+                                     KFold)
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from ..processing import StackingRegressor, SPoC
 
 
-def run_meg_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, fbands=None):
-    """Helper for running ridge resgression.
-    
+def run_meg_ridge(data, subjects_data, cv=10, alphas=None,
+                  train_sizes=None, fbands=None):
+    """Run ridge resgression on MEG data.
+
     Parameters
     ----------
     data : pandas.DataFrame
         Features to be used for predictions.
-        
+
     subjects_data : pandas.DataFrame
         Information about subjects from CamCAN dataset.
 
@@ -41,11 +46,11 @@ def run_meg_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, fba
         For integer/None inputs, if the estimator is a classifier and ``y`` is
         either binary or multiclass, :class:`StratifiedKFold` is used. In all
         other cases, :class:`KFold` is used.
-        
+
     alphas : numpy.ndarray
         Values for parameter alpha to be tested using RidgeCV. Default is
         np.logspace(start=-3, stop=1, num=50, base=10.0).
-        
+
     train_sizes : array-like, shape (n_ticks,), dtype float or int
         Relative or absolute numbers of training examples that will be used to
         generate the learning curve. If the dtype is float, it is regarded as a
@@ -55,56 +60,64 @@ def run_meg_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, fba
         Note that for classification the number of samples usually have to
         be big enough to contain at least one sample from each class.
         (default: np.linspace(0.1, 1.0, 5))
-    
+
     fbands : [(float, float)]
         List of frequency bands to be checked with SPoC.
+
     """
     if alphas is None:
         alphas = np.logspace(-3, 5, 100)
     if train_sizes is None:
         train_sizes = np.linspace(.1, 1.0, 5)
-    
+
     # read sample data to prepare picks for epochs
     data_path = sample.data_path()
-    raw_fname = data_path + '/MEG/sample/sample_audvis_filt-0-40_raw.fif'
+    raw_fname = path.join(data_path,
+                          'MEG/sample/sample_audvis_filt-0-40_raw.fif')
     raw = mne.io.read_raw_fif(raw_fname)
     info = raw.info
     picks = mne.pick_types(info, meg='mag')
 
     subjects = [d['subject'] for d in data if 'subject' in d]
-    covs = np.array(tuple(d['covs'][:, picks][:, :, picks] for d in data if 'subject' in d))
-    
+    covs = np.array(tuple(d['covs'][:, picks][:, :, picks] for d
+                          in data if 'subject' in d))
+
     # prepare data, subjects age
     y = subjects_data.loc[subjects].age.values
     X = np.arange(len(y))
 
-    spoc = SPoC(covs=covs, fbands=fbands, spoc=True, n_components=len(picks), alpha=0.01)
+    spoc = SPoC(covs=covs, fbands=fbands, spoc=True,
+                n_components=len(picks), alpha=0.01)
 
-    reg = make_pipeline(spoc, StandardScaler(), RidgeCV(alphas))
+    reg = make_pipeline(spoc, StandardScaler(),
+                        RidgeCV(alphas))
     # Monte Carlo cross-validation
     cv_ss = ShuffleSplit(n_splits=cv, random_state=42)
 
-    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error', cv=cv_ss)
+    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error',
+                          cv=cv_ss)
     r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv_ss)
     y_pred = cross_val_predict(reg, X, y, cv=cv)
-    
-    train_sizes, train_scores, test_scores = \
-        learning_curve(reg, X, y, cv=cv_ss, train_sizes=train_sizes, scoring='neg_mean_absolute_error')
-    
+
+    train_sizes, train_scores, test_scores =\
+        learning_curve(reg, X, y, cv=cv_ss, train_sizes=train_sizes,
+                       scoring='neg_mean_absolute_error')
+
     df_pred = pd.DataFrame(y_pred, index=subjects, dtype=float)
 
-    return df_pred, mae, r2, train_sizes, train_scores, test_scores 
+    return df_pred, mae, r2, train_sizes, train_scores, test_scores
 
 
-def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None, fbands=None, n_jobs=None):
-    """Helper for running ridge resgression.
-    
+def run_stacking(named_data, subjects_data, cv=10, alphas=None,
+                 train_sizes=None, fbands=None, n_jobs=None):
+    """Run stacking.
+
     Parameters
     ----------
     named_data : list(tuple(str, pandas.DataFrame))
         List of tuples (name, data) with name and corresponding features
         to be used for predictions by linear models.
-        
+
     subjects_data : pandas.DataFrame
         Information about subjects from CamCAN dataset.
 
@@ -120,11 +133,11 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
         For integer/None inputs, if the estimator is a classifier and ``y`` is
         either binary or multiclass, :class:`StratifiedKFold` is used. In all
         other cases, :class:`KFold` is used.
-        
+
     alphas : numpy.ndarray
         Values for parameter alpha to be tested. Default is
         np.logspace(start=-3, stop=1, num=50, base=10.0).
-        
+
     train_sizes : array-like, shape (n_ticks,), dtype float or int
         Relative or absolute numbers of training examples that will be used to
         generate the learning curve. If the dtype is float, it is regarded as a
@@ -134,7 +147,7 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
         Note that for classification the number of samples usually have to
         be big enough to contain at least one sample from each class.
         (default: np.linspace(0.1, 1.0, 5))
-    
+
     fbands : [(float, float)]
         List of frequency bands to be checked with SPoC.
 
@@ -143,6 +156,7 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
         ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
         ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
         for more details.
+
     """
     if alphas is None:
         alphas = np.logspace(-3, 5, 100)
@@ -164,8 +178,9 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
         else:
             combined_data.append(data)
 
-    data =  pd.concat(combined_data, axis=1, join='inner')
-    # if we have meg data, we will provide only one column of data for the classifiers
+    data = pd.concat(combined_data, axis=1, join='inner')
+    # if we have meg data, we will provide only one column of
+    # data for the classifiers
     feature_col_lens = tuple(d.shape[1] for d in combined_data)
     estimators = []
     subjects = data.index.values
@@ -175,7 +190,7 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
         ft_begin = 0
         ft_end = 0
         # prepare input information for ColumnTransformer
-        for i_ct, (name, col_len) in  enumerate(zip(names, feature_col_lens)):
+        for i_ct, (name, col_len) in enumerate(zip(names, feature_col_lens)):
             trans_name = ('pass_' if i_data == i_ct else 'drop_') + name
             transformer = 'passthrough' if i_data == i_ct else 'drop'
             ft_end = ft_end + col_len
@@ -187,36 +202,43 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
 
         if est_name == 'reg_meg':
             if fbands is None:
-                raise ValueError('fbands should be provided for MEG classifier.')
+                raise ValueError('fbands should be given for MEG classifier.')
             # read sample data to prepare picks for epochs
             data_path = sample.data_path()
-            raw_fname = data_path + '/MEG/sample/sample_audvis_filt-0-40_raw.fif'
+            raw_fname = path.join(data_path,
+                                  'MEG/sample',
+                                  'sample_audvis_filt-0-40_raw.fif')
             raw = mne.io.read_raw_fif(raw_fname)
             info = raw.info
             picks = mne.pick_types(info, meg='mag')
             # if there is no subject information than we'll skip that entry
-            # select only magnetometers data
-            covs = np.array(tuple(d['covs'][:, picks][:, :, picks] for d in meg_data if 'subject' in d))
-            spoc = SPoC(covs=covs, fbands=fbands, spoc=True, n_components=len(picks), alpha=0.01)
+            covs = np.array(tuple(d['covs'][:, picks][:, :, picks] for d
+                                  in meg_data if 'subject' in d))
+            spoc = SPoC(covs=covs, fbands=fbands, spoc=True,
+                        n_components=len(picks), alpha=0.01)
 
-            est_pipeline = make_pipeline(ColumnTransformer(feature_transformers),
-                                         spoc, StandardScaler(), RidgeCV(alphas))
+            est_pipeline = make_pipeline(
+                ColumnTransformer(feature_transformers),
+                spoc, StandardScaler(), RidgeCV(alphas))
         else:
-            est_pipeline = make_pipeline(ColumnTransformer(feature_transformers), 
-                                                        StandardScaler(),
-                                                        RidgeCV(alphas))
+            est_pipeline = make_pipeline(
+                ColumnTransformer(feature_transformers),
+                StandardScaler(), RidgeCV(alphas))
         estimators.append((est_name, est_pipeline))
 
-    final_estimator = RandomForestRegressor(n_estimators=100, random_state=rnd_state,
+    final_estimator = RandomForestRegressor(n_estimators=100,
+                                            random_state=rnd_state,
                                             oob_score=True, n_jobs=n_jobs)
-    reg = StackingRegressor(estimators=estimators, final_estimator=final_estimator, cv=cv,
+    reg = StackingRegressor(estimators=estimators,
+                            final_estimator=final_estimator, cv=cv,
                             random_state=rnd_state, n_jobs=n_jobs)
-    
+
     y = subjects_data.loc[subjects].age.values
     X = data.values
 
     kfold_cv = KFold(n_splits=cv, shuffle=True, random_state=rnd_state)
-    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error', cv=kfold_cv, n_jobs=n_jobs)
+    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error',
+                          cv=kfold_cv, n_jobs=n_jobs)
 
     r2 = cross_val_score(reg, X, y, scoring='r2', cv=kfold_cv, n_jobs=n_jobs)
     y_pred = cross_val_predict(reg, X, y, cv=kfold_cv, n_jobs=n_jobs)
@@ -224,20 +246,21 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None, train_sizes=None
     train_sizes, train_scores, test_scores = \
         learning_curve(reg, X, y, cv=kfold_cv, train_sizes=train_sizes,
                        scoring='neg_mean_absolute_error', n_jobs=n_jobs)
-    
+
     df_pred = pd.DataFrame(y_pred, index=subjects, dtype=float)
 
-    return df_pred, mae, r2, train_sizes, train_scores, test_scores 
+    return df_pred, mae, r2, train_sizes, train_scores, test_scores
 
 
-def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, n_jobs=None):
-    """Helper for running ridge resgression.
-    
+def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None,
+              n_jobs=None):
+    """Run ridge resgression.
+
     Parameters
     ----------
     data : pandas.DataFrame
         Features to be used for predictions.
-        
+
     subjects_data : pandas.DataFrame
         Information about subjects from CamCAN dataset.
 
@@ -253,11 +276,11 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, n_jobs=
         For integer/None inputs, if the estimator is a classifier and ``y`` is
         either binary or multiclass, :class:`StratifiedKFold` is used. In all
         other cases, :class:`KFold` is used.
-        
+
     alphas : numpy.ndarray
         Values for parameter alpha to be tested. Default is
         np.logspace(start=-3, stop=1, num=50, base=10.0).
-        
+
     train_sizes : array-like, shape (n_ticks,), dtype float or int
         Relative or absolute numbers of training examples that will be used to
         generate the learning curve. If the dtype is float, it is regarded as a
@@ -267,18 +290,19 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, n_jobs=
         Note that for classification the number of samples usually have to
         be big enough to contain at least one sample from each class.
         (default: np.linspace(0.1, 1.0, 5))
-    
+
     n_jobs : int or None, optional (default=None)
         The number of CPUs to use to do the computation.
         ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
         ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
         for more details.
+
     """
     if alphas is None:
         alphas = np.logspace(-3, 5, 100)
     if train_sizes is None:
         train_sizes = np.linspace(.1, 1.0, 5)
-    
+
     # prepare data, subjects age
     subjects = data.index.values
     y = subjects_data.loc[subjects].age.values
@@ -288,16 +312,18 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None, n_jobs=
     # Monte Carlo cross-validation
     cv_ss = ShuffleSplit(n_splits=cv, random_state=42)
 
-    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error', cv=cv_ss, n_jobs=n_jobs)
+    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error',
+                          cv=cv_ss, n_jobs=n_jobs)
     r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv_ss, n_jobs=n_jobs)
     y_pred = cross_val_predict(reg, X, y, cv=cv, n_jobs=n_jobs)
-    
+
     train_sizes, train_scores, test_scores = \
-        learning_curve(reg, X, y, cv=cv_ss, train_sizes=train_sizes, scoring='neg_mean_absolute_error',  n_jobs=n_jobs)
-    
+        learning_curve(reg, X, y, cv=cv_ss, train_sizes=train_sizes,
+                       scoring='neg_mean_absolute_error',  n_jobs=n_jobs)
+
     df_pred = pd.DataFrame(y_pred, index=subjects, dtype=float)
 
-    return df_pred, mae, r2, train_sizes, train_scores, test_scores 
+    return df_pred, mae, r2, train_sizes, train_scores, test_scores
 
 
 def plot_pred(y, y_pred, mae, title='Prediction vs Measured'):
@@ -306,25 +332,29 @@ def plot_pred(y, y_pred, mae, title='Prediction vs Measured'):
     plt.title(title)
     plt.scatter(y, y_pred,  edgecolor='black')
     plt.plot([y.min(), y.max()], [y.min(), y.max()], '-', lw=3, color='green')
-    plt.plot([y.min(), y.max()], [y.min() - mae, y.max() - mae], 'k--', lw=3, color='red')
-    plt.plot([y.min(), y.max()], [y.min() + mae, y.max() + mae], 'k--', lw=3, color='red')
+    plt.plot([y.min(), y.max()], [y.min() - mae, y.max() - mae], 'k--', lw=3,
+             color='red')
+    plt.plot([y.min(), y.max()], [y.min() + mae, y.max() + mae], 'k--', lw=3,
+             color='red')
     plt.xlabel('Chronological Age')
     plt.ylabel('Predicted Age')
     plt.grid()
     plt.show()
 
-    
+
 # https://scikit-learn.org/stable/auto_examples/model_selection/
-# plot_learning_curve.html#sphx-glr-auto-examples-model-selection-plot-learning-curve-py
-def plot_learning_curve(train_sizes, train_scores, test_scores, title='Learning Curves', ylim=None):
+# plot_learning_curve.html
+def plot_learning_curve(train_sizes, train_scores, test_scores,
+                        title='Learning Curves', ylim=None):
     """
     Generate a simple plot of the test and training learning curve.
 
     Parameters
-    ----------        
+    ----------
     train_sizes : array-like, shape (n_ticks,), dtype float or int
-        Numbers of training examples that has been used to generate the learning curve.
-        
+        Numbers of training examples that has been used to generate
+        the learning curve.
+
     train_scores : array, shape (n_ticks, n_cv_folds)
         Scores on training sets.
 
@@ -336,19 +366,20 @@ def plot_learning_curve(train_sizes, train_scores, test_scores, title='Learning 
 
     ylim : tuple, shape (ymin, ymax), optional
         Defines minimum and maximum yvalues plotted.
+
     """
     plt.figure()
     plt.title(title)
-    
+
     if ylim is not None:
         plt.ylim(*ylim)
 
     plt.xlabel('Training examples')
     plt.ylabel('Score')
-    
+
     train_scores = -train_scores
     test_scores = -test_scores
-    
+
     train_scores_mean = np.mean(train_scores, axis=1)
     train_scores_std = np.std(train_scores, axis=1)
     test_scores_mean = np.mean(test_scores, axis=1)
@@ -369,10 +400,11 @@ def plot_learning_curve(train_sizes, train_scores, test_scores, title='Learning 
     plt.show()
 
 
-def plot_barchart(mae_std, title='Age Prediction Performance of Different Modalities',
+def plot_barchart(mae_std,
+                  title='Age Prediction Performance of Different Modalities',
                   bar_text_indent=2):
     """Plot bar chart.
-    
+
     Parameters
     ----------
     mae_std : dict(str, (number, number))
@@ -380,7 +412,9 @@ def plot_barchart(mae_std, title='Age Prediction Performance of Different Modali
     title : str
         Bar chart title.
     bar_text_indent : number
-        Indent from the bar top for labels displaying mae and std, measures in years.
+        Indent from the bar top for labels displaying mae and std,
+        measured in years.
+
     """
     objects = tuple(reversed(sorted(mae_std.keys())))
     y_pos = np.arange(len(objects))
@@ -388,7 +422,6 @@ def plot_barchart(mae_std, title='Age Prediction Performance of Different Modali
     std = tuple(mae_std[k][1] for k in objects)
 
     fig, axs = plt.subplots()
-    #axs.grid(zorder=0)
     axs.barh(y_pos, mae, align='center', xerr=std)
 
     # remove frame around the plot
@@ -398,7 +431,8 @@ def plot_barchart(mae_std, title='Age Prediction Performance of Different Modali
     axs.spines['left'].set_visible(False)
 
     for i, v in enumerate(mae):
-        axs.text(v + bar_text_indent, i - 0.05, f'{round(v, 2)} ({round(std[i], 2)})', 
+        axs.text(v + bar_text_indent, i - 0.05,
+                 f'{round(v, 2)} ({round(std[i], 2)})',
                  color='blue', bbox=dict(facecolor='white'))
 
     plt.yticks(y_pos, objects)
@@ -416,6 +450,7 @@ def plot_boxplot(data, title='Age Prediction Performance'):
         Dictionary with labels and corresponding data.
     title : str
         Bar chart title.
+
     """
     data_pd = pd.DataFrame(data)
     sns.set_style('darkgrid')
@@ -425,8 +460,9 @@ def plot_boxplot(data, title='Age Prediction Performance'):
     ax.set(xlabel='Absolute Prediction Error (Years)')
     plt.show()
 
+
 def plot_error_scatters(data, title='AE Scatter', xlim=None, ylim=None):
-    """Plot errors of predictions from different modalities versus each other."""
+    """Plot prediction errors of different modalities versus each other."""
     data = data.dropna()
     age = data.age.values
     color_map = plt.cm.viridis((age - min(age)) / max(age))
@@ -445,8 +481,8 @@ def plot_error_scatters(data, title='AE Scatter', xlim=None, ylim=None):
         if xlim is not None:
             xlim_ = (xlim[0] - 1, xlim[1] + 1)
         else:
-            xlim_ =(data[key1].min() - 1, data[key1].max() + 1)
-        
+            xlim_ = (data[key1].min() - 1, data[key1].max() + 1)
+
         if ylim is not None:
             ylim_ = (ylim[0] - 1, ylim[1] + 1)
         else:
@@ -458,7 +494,7 @@ def plot_error_scatters(data, title='AE Scatter', xlim=None, ylim=None):
 
 
 def plot_error_age(data, title='AE vs Age', xlim=None, ylim=None):
-    """Plot errors of predictions from different modalities versus subject's age."""
+    """Plot prediction errors of different modalities versus subject's age."""
     keys = data.columns
     # remove column with the original age
     keys = keys[1:]
@@ -479,7 +515,8 @@ def plot_error_age(data, title='AE vs Age', xlim=None, ylim=None):
             plt.ylim(ylim)
 
 
-def plot_error_segments(data, segment_len=10, title=None, figsize=None, xlim=(0, 55)):
+def plot_error_segments(data, segment_len=10, title=None, figsize=None,
+                        xlim=(0, 55)):
     """Plot prediction errors for different age groups."""
     keys = data.columns
     # remove column with the original age
@@ -500,14 +537,15 @@ def plot_error_segments(data, segment_len=10, title=None, figsize=None, xlim=(0,
             else:
                 indices = (age >= bound_low) * (age < bound_high)
 
-            segments_dict[f'{bound_low}-{bound_high}'] = np.abs(age[indices] - age_pred[indices])
-        
+            segments_dict[f'{bound_low}-{bound_high}'] =\
+                np.abs(age[indices] - age_pred[indices])
+
         df = pd.DataFrame.from_dict(segments_dict, orient='index').transpose()
-        
+
         sns.set_style('darkgrid')
         fig, ax = plt.subplots(figsize=figsize)
         sns.boxplot(data=df, showmeans=True, orient='h')
         ax.set_title(plt_title)
-        ax.set(xlim=xlim, xlabel='Absolute Prediction Error (Years)', ylabel='Age Ranges')
+        ax.set(xlim=xlim, xlabel='Absolute Prediction Error (Years)',
+               ylabel='Age Ranges')
         plt.show()
-

@@ -1,4 +1,4 @@
-"""Utilities to manage mask"""
+"""Utilities to manage mask."""
 
 from nilearn._utils import check_niimg
 from nilearn.input_data import NiftiLabelsMasker, NiftiMapsMasker
@@ -27,7 +27,6 @@ def make_masker_from_atlas(atlas, memory=None, memory_level=1):
         Nilearn Masker.
 
     """
-
     atlas_ = check_niimg(atlas)
     atlas_dim = len(atlas_.shape)
     if atlas_dim == 3:

@@ -1,17 +1,18 @@
+"""Age prediction using MRI, fMRI and MEG data."""
 import pickle
 
 import pandas as pd
 import mne
-import numpy as np
 
-from camcan.utils import (run_stacking, run_ridge, plot_pred, plot_learning_curve, plot_boxplot,
-                          plot_barchart, plot_error_scatters, plot_error_age, plot_error_segments,
-                          run_meg_ridge)
+from camcan.utils import (run_stacking, run_ridge, run_meg_ridge)
 
 
 CV = 10
 N_JOBS = 4
 PANDAS_OUT_FILE = '../../data/age_prediction_exp_data.h5'
+STRUCTURAL_DATA = '../../data/structural/structural_data.h5'
+CONNECT_DATA_CORR = '../../data/connectivity/connect_data_correlation.h5'
+CONNECT_DATA_TAN = '../../data/connectivity/connect_data_tangent.h5'
 # store mae, learning curves for summary plots
 regression_mae = pd.DataFrame(columns=range(0, CV), dtype=float)
 regression_r2 = pd.DataFrame(columns=range(0, CV), dtype=float)
@@ -20,7 +21,9 @@ learning_curves = {}
 # read information about subjects
 subjects_data = pd.read_csv('../../data/participant_data.csv', index_col=0)
 # for storing predictors data
-subjects_predictions = pd.DataFrame(subjects_data.age, index=subjects_data.index, dtype=float)
+subjects_predictions = pd.DataFrame(subjects_data.age,
+                                    index=subjects_data.index,
+                                    dtype=float)
 
 # 643 subjects, each covariance is 9x306x306
 meg_data = mne.externals.h5io.read_hdf5('../../data/covs_allch_oas.h5')
@@ -30,13 +33,9 @@ print(f'Found {len(meg_data)} subjects')
 print(f'A covarince matrix shape is {meg_data[0]["covs"].shape}')
 
 # read features
-
-area_data = pd.read_hdf('../../data/structural/structural_data.h5', 
-                           key='area')
-thickness_data = pd.read_hdf('../../data/structural/structural_data.h5',
-                               key='thickness')
-volume_data = pd.read_hdf('../../data/structural/structural_data.h5',
-                            key='volume')
+area_data = pd.read_hdf(STRUCTURAL_DATA, key='area')
+thickness_data = pd.read_hdf(STRUCTURAL_DATA, key='thickness')
+volume_data = pd.read_hdf(STRUCTURAL_DATA, key='volume')
 
 area_data = area_data.dropna()
 thickness_data = thickness_data.dropna()
@@ -51,14 +50,11 @@ thickness_data = thickness_data.loc[common_subjects]
 volume_data = volume_data.loc[common_subjects]
 
 # read connectivity data
-connect_data_tangent_basc = pd.read_hdf('../../data/connectivity/connect_data_tangent.h5',
-                              key='basc197')
-connect_data_r2z_basc = pd.read_hdf('../../data/connectivity/connect_data_correlation.h5',
-                              key='basc197')
-connect_data_tangent_modl = pd.read_hdf('../../data/connectivity/connect_data_tangent.h5',
-                              key='modl256')
-connect_data_r2z_modl = pd.read_hdf('../../data/connectivity/connect_data_correlation.h5',
-                              key='modl256')
+connect_data_tangent_basc = pd.read_hdf(CONNECT_DATA_TAN, key='basc197')
+connect_data_r2z_basc = pd.read_hdf(CONNECT_DATA_CORR, key='basc197')
+connect_data_tangent_modl = pd.read_hdf(CONNECT_DATA_TAN, key='modl256')
+connect_data_r2z_modl = pd.read_hdf(CONNECT_DATA_CORR, key='modl256')
+
 # use only common subjects
 connect_data_tangent_basc = connect_data_tangent_basc.loc[common_subjects]
 connect_data_r2z_basc = connect_data_r2z_basc.loc[common_subjects]
@@ -84,34 +80,53 @@ data_ref = {
     'Connectivity Matrix, MODL 256 tan': connect_data_tangent_modl,
     'Connectivity Matrix, MODL 256 r2z': connect_data_r2z_modl,
     'MEG': meg_data,
-    'MEG, Cortical Surface Area Stacked-multimodal': [('area', area_data), ('meg', meg_data)],
-    'MEG, Cortical Thickness Stacked-multimodal': [('thickness', thickness_data), ('meg', meg_data)],
-    'MEG, Subcortical Volumes Stacked-multimodal': [('volume', volume_data), ('meg', meg_data)],
-    'MEG, BASC 197 tan Stacked-multimodal': [('basc', connect_data_tangent_basc), ('meg', meg_data)],
-    'MEG, MODL 256 r2z Stacked-multimodal': [('modl', connect_data_r2z_modl), ('meg', meg_data)],
-    'MRI Stacked': [('area', area_data), ('thickness', thickness_data), ('volume', volume_data)],
-    'fMRI Stacked': [('basc', connect_data_tangent_basc), ('modl', connect_data_r2z_modl)],
-    'MRI, fMRI Stacked-multimodal': [('area', area_data), ('thickness', thickness_data), ('volume', volume_data),
-                                     ('basc', connect_data_tangent_basc), ('modl', connect_data_r2z_modl)],
-    'MEG, MRI Stacked-multimodal': [('area', area_data), ('thickness', thickness_data), ('volume', volume_data),
+    'MEG, Cortical Surface Area Stacked-multimodal': [('area', area_data),
+                                                      ('meg', meg_data)],
+    'MEG, Cortical Thickness Stacked-multimodal': [('thickness',
+                                                    thickness_data),
+                                                   ('meg', meg_data)],
+    'MEG, Subcortical Volumes Stacked-multimodal': [('volume', volume_data),
+                                                    ('meg', meg_data)],
+    'MEG, BASC 197 tan Stacked-multimodal': [('basc',
+                                              connect_data_tangent_basc),
+                                             ('meg', meg_data)],
+    'MEG, MODL 256 r2z Stacked-multimodal': [('modl', connect_data_r2z_modl),
+                                             ('meg', meg_data)],
+    'MRI Stacked': [('area', area_data), ('thickness', thickness_data),
+                    ('volume', volume_data)],
+    'fMRI Stacked': [('basc', connect_data_tangent_basc),
+                     ('modl', connect_data_r2z_modl)],
+    'MRI, fMRI Stacked-multimodal': [('area', area_data),
+                                     ('thickness', thickness_data),
+                                     ('volume', volume_data),
+                                     ('basc',
+                                      connect_data_tangent_basc),
+                                     ('modl', connect_data_r2z_modl)],
+    'MEG, MRI Stacked-multimodal': [('area', area_data),
+                                    ('thickness', thickness_data),
+                                    ('volume', volume_data),
                                     ('meg', meg_data)],
-    'MEG, fMRI Stacked-multimodal': [('basc', connect_data_tangent_basc), ('modl', connect_data_r2z_modl),
+    'MEG, fMRI Stacked-multimodal': [('basc', connect_data_tangent_basc),
+                                     ('modl', connect_data_r2z_modl),
                                      ('meg', meg_data)],
-    'MEG, MRI, fMRI Stacked-multimodal': [('area', area_data), ('thickness', thickness_data), ('volume', volume_data),
-                                          ('basc', connect_data_tangent_basc), ('modl', connect_data_r2z_modl),
+    'MEG, MRI, fMRI Stacked-multimodal': [('area', area_data),
+                                          ('thickness', thickness_data),
+                                          ('volume', volume_data),
+                                          ('basc', connect_data_tangent_basc),
+                                          ('modl', connect_data_r2z_modl),
                                           ('meg', meg_data)]
 }
 
 for key, data in data_ref.items():
     if 'Stack' in key:
-        df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores \
-        = run_stacking(data, subjects_data, cv=CV, fbands=FREQ_BANDS)
+        df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
+            run_stacking(data, subjects_data, cv=CV, fbands=FREQ_BANDS)
     elif key == 'MEG':
-        df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores = \
-        run_meg_ridge(data, subjects_data, cv=CV, fbands=FREQ_BANDS)
+        df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
+            run_meg_ridge(data, subjects_data, cv=CV, fbands=FREQ_BANDS)
     else:
-        df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores \
-        = run_ridge(data, subjects_data, cv=CV, n_jobs=N_JOBS)
+        df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
+            run_ridge(data, subjects_data, cv=CV, n_jobs=N_JOBS)
 
     arr_mae = -arr_mae
     mae = arr_mae.mean()

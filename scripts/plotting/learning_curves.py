@@ -1,3 +1,4 @@
+"""Plot learning curves for every modality."""
 import os
 import pickle as pkl
 import shutil
@@ -47,14 +48,15 @@ for key in data:
     plt.grid()
 
     plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
-                        train_scores_mean + train_scores_std, alpha=0.1,
-                        color='r')
+                     train_scores_mean + train_scores_std, alpha=0.1,
+                     color='r')
     plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
-                        test_scores_mean + test_scores_std, alpha=0.1, color='g')
+                     test_scores_mean + test_scores_std, alpha=0.1,
+                     color='g')
     plt.plot(train_sizes, train_scores_mean, 'o-', color='r',
-                label='Training score')
+             label='Training score')
     plt.plot(train_sizes, test_scores_mean, 'o-', color='g',
-                label='Cross-validation score')
+             label='Cross-validation score')
 
     plt.legend(loc='best')
     name = f'LC_{key.replace(" ", "-")}.{OUT_FTYPE}'

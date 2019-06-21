@@ -1,9 +1,8 @@
+"""Plot the predicted age versus the chronological age."""
 import os
-import pickle as pkl
 import shutil
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 
@@ -38,8 +37,10 @@ for key in keys:
     plt.title(title)
     plt.scatter(y, y_pred,  edgecolor='black')
     plt.plot([y.min(), y.max()], [y.min(), y.max()], '-', lw=3, color='green')
-    plt.plot([y.min(), y.max()], [y.min() - mae, y.max() - mae], 'k--', lw=3, color='red')
-    plt.plot([y.min(), y.max()], [y.min() + mae, y.max() + mae], 'k--', lw=3, color='red')
+    plt.plot([y.min(), y.max()], [y.min() - mae, y.max() - mae],
+             'k--', lw=3, color='red')
+    plt.plot([y.min(), y.max()], [y.min() + mae, y.max() + mae],
+             'k--', lw=3, color='red')
     plt.xlabel('Chronological Age (Years)')
     plt.ylabel('Predicted Age (Years)')
     plt.grid()
