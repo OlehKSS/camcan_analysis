@@ -1,3 +1,4 @@
+"""Plot learning curves for every modality."""
 import os
 import pickle as pkl
 import shutil

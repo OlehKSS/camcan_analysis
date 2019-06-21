@@ -1,3 +1,4 @@
+"""Plot the predicted age versus the chronological age."""
 import os
 import shutil
 

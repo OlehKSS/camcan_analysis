@@ -1,4 +1,4 @@
-"""Utilities for Jupyter Notebook reports"""
+"""Utilities for Jupyter Notebook reports."""
 from itertools import combinations
 from os import path
 
@@ -24,7 +24,7 @@ from ..processing import StackingRegressor, SPoC
 
 def run_meg_ridge(data, subjects_data, cv=10, alphas=None,
                   train_sizes=None, fbands=None):
-    """Helper for running ridge resgression.
+    """Run ridge resgression on MEG data.
 
     Parameters
     ----------
@@ -63,6 +63,7 @@ def run_meg_ridge(data, subjects_data, cv=10, alphas=None,
 
     fbands : [(float, float)]
         List of frequency bands to be checked with SPoC.
+
     """
     if alphas is None:
         alphas = np.logspace(-3, 5, 100)
@@ -109,7 +110,7 @@ def run_meg_ridge(data, subjects_data, cv=10, alphas=None,
 
 def run_stacking(named_data, subjects_data, cv=10, alphas=None,
                  train_sizes=None, fbands=None, n_jobs=None):
-    """Helper for running ridge resgression.
+    """Run stacking.
 
     Parameters
     ----------
@@ -155,6 +156,7 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None,
         ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
         ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
         for more details.
+
     """
     if alphas is None:
         alphas = np.logspace(-3, 5, 100)
@@ -252,7 +254,7 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None,
 
 def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None,
               n_jobs=None):
-    """Helper for running ridge resgression.
+    """Run ridge resgression.
 
     Parameters
     ----------
@@ -294,6 +296,7 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None,
         ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
         ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
         for more details.
+
     """
     if alphas is None:
         alphas = np.logspace(-3, 5, 100)
@@ -363,6 +366,7 @@ def plot_learning_curve(train_sizes, train_scores, test_scores,
 
     ylim : tuple, shape (ymin, ymax), optional
         Defines minimum and maximum yvalues plotted.
+
     """
     plt.figure()
     plt.title(title)
@@ -410,6 +414,7 @@ def plot_barchart(mae_std,
     bar_text_indent : number
         Indent from the bar top for labels displaying mae and std,
         measured in years.
+
     """
     objects = tuple(reversed(sorted(mae_std.keys())))
     y_pos = np.arange(len(objects))
@@ -445,6 +450,7 @@ def plot_boxplot(data, title='Age Prediction Performance'):
         Dictionary with labels and corresponding data.
     title : str
         Bar chart title.
+
     """
     data_pd = pd.DataFrame(data)
     sns.set_style('darkgrid')

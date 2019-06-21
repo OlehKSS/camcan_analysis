@@ -1,3 +1,4 @@
+"""Plot mean absolute error (MAE) versus fMRI timeseries duration."""
 from itertools import product
 import os
 

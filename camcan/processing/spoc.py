@@ -1,3 +1,4 @@
+"""Implement Source Power Comodulation (SPoC) framework."""
 import copy as cp
 
 from mne import EvokedArray
@@ -7,12 +8,14 @@ from sklearn.base import TransformerMixin
 
 
 def shrink(cov, alpha):
+    """Shrink covariance matrix."""
     n = len(cov)
     shrink_cov = (1 - alpha) * cov + alpha * np.eye(n)
     return shrink_cov
 
 
 def fstd(y):
+    """Standartize data."""
     y = y.astype(np.float64)
     y -= y.mean(axis=0)
     y /= y.std(axis=0)
@@ -20,18 +23,45 @@ def fstd(y):
 
 
 class SPoC(TransformerMixin):
-    """
-    Source Power Comodulation (SPoC) framework.
-    """
+    """Source Power Comodulation (SPoC) framework."""
+
     def __init__(self, covs=None, fbands=None,
                  spoc=True, n_components=2, alpha=0):
-        self.covs = covs  # (sub,fb,chan,chan)
+        """Create a SPoC instanse.
+
+        Parameters
+        ----------
+        covs: numpy.ndarray
+            Covariance matrices for every subject and frequency band.
+            The array is of shape (subjects, frequency_bands,
+            channels, channels).
+        fbands: list(tuple(float, float))
+            List of frequency bands.
+        spoc: bool
+            Whether to run SPoC or not, default is True.
+        n_components: int
+            Number of filter components to consider, default is 2.
+        alpha: int
+            Default is 0.
+
+        """
+        self.covs = covs
         self.fbands = fbands
         self.spoc = spoc
         self.n_components = n_components
         self.alpha = alpha
 
     def fit(self, X, y):
+        """Fit to the training data.
+
+        Parameters
+        ----------
+        X: numpy.ndarray | list | tuple
+            List of subjects in the training data.
+        y: float
+            Target variable for every subject.
+
+        """
         target = fstd(y)
         self.patterns_ = []
         self.filters_ = []
@@ -62,6 +92,14 @@ class SPoC(TransformerMixin):
         return self
 
     def transform(self, X):
+        """Transform data using filters found by the fit method.
+
+        Parameters
+        ----------
+        X: numpy.ndarray | list | tuple
+            List of subjects in the training data.
+
+        """
         if isinstance(X, np.ndarray) and\
            not np.issubdtype(X.dtype, np.integer):
             X = X.astype('int')
@@ -88,7 +126,7 @@ class SPoC(TransformerMixin):
                       mask_params=None, outlines='head', contours=6,
                       image_interp='bilinear', average=None, head_pos=None,
                       axes=None):
-
+        """Plot found patterns."""
         if components is None:
             components = np.arange(self.n_components)
         patterns = self.patterns_[self.fbands.index(fband)]
@@ -117,7 +155,7 @@ class SPoC(TransformerMixin):
                      mask_params=None, outlines='head', contours=6,
                      image_interp='bilinear', average=None, head_pos=None,
                      axes=None):
-
+        """Plot found filters."""
         if components is None:
             components = np.arange(self.n_components)
         filters = self.filters_[self.fbands.index(fband)]

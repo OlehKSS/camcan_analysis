@@ -1,7 +1,7 @@
 #!/bin/python3
 # coding: utf-8
 
-""" Select, clean and merge score dataset from camcan directory. """
+"""Select, clean and merge score dataset from camcan directory."""
 
 # libraries
 import os
@@ -17,7 +17,8 @@ path_features = os.path.join(directory_data, 'behavioural_features.json')
 
 def get_df(path):
     """
-    Function to extract a df from the text files
+    Extract a df from the text files.
+
     : param path: string
     : return: dataframe, list of integers
     """
@@ -63,7 +64,8 @@ def get_df(path):
 
 def check_unicity(df, col_index):
     """
-    Function to validate and clean the dataframe
+    Validate and clean the dataframe.
+
     : param df: dataframe
     : param col_index: string (column to check)
     : return: dataframe
@@ -80,7 +82,8 @@ def check_unicity(df, col_index):
 
 def clean_df(df):
     """
-    Function to clean the dataframe
+    Clean the dataframe.
+
     : param df: dataframe
     : return: dataframe
     """
@@ -102,7 +105,8 @@ def clean_df(df):
 
 def merge_data(path_data, filename_participants):
     """
-    Function to merge the different datasets
+    Merge the different datasets.
+
     :param path_data: string
     :param filename_participants: string
     :return: dataframe, dictionary

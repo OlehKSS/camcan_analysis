@@ -1,4 +1,4 @@
-"""Functions for execution of shell commands"""
+"""Functions for shell commands execution."""
 import logging
 import os
 from subprocess import run, PIPE
@@ -17,9 +17,6 @@ def run_fs(cmd, env={}, ignore_errors=False):
         If True exception will be raised in case of command execution error.
         Default is False.
 
-    Returns
-    -------
-    None
     """
     merged_env = os.environ
     merged_env.update(env)

@@ -1,4 +1,4 @@
-"""Extract temporal series from Nifti images"""
+"""Extract temporal series from Nifti images."""
 
 import numpy as np
 
@@ -38,6 +38,7 @@ def extract_timeseries(func,
 
     duration : float
         The duration of timeseries to be extracted, measured in seconds.
+
     """
     TR = 1.992  # s
     masker = make_masker_from_atlas(atlas, memory=memory,

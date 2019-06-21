@@ -45,6 +45,7 @@ class _BaseStacking(_BaseComposition, MetaEstimatorMixin, TransformerMixin,
     Warning: This class should not be used directly. Use derived classes
     instead.
     """
+
     _required_parameters = ['estimators']
 
     @abstractmethod
@@ -96,7 +97,7 @@ class _BaseStacking(_BaseComposition, MetaEstimatorMixin, TransformerMixin,
                                    else pred for pred in y_pred], axis=1)
 
     def set_params(self, **params):
-        """ Setting the parameters for the stacking estimator.
+        """Set the parameters for the stacking estimator.
 
         Valid parameter keys can be listed with get_params().
 
@@ -121,18 +122,19 @@ class _BaseStacking(_BaseComposition, MetaEstimatorMixin, TransformerMixin,
         return self
 
     def get_params(self, deep=True):
-        """ Get the parameters of the stacking estimator.
+        """Get the parameters of the stacking estimator.
 
         Parameters
         ----------
         deep: bool
             Setting it to True gets the various classifiers and the parameters
             of the classifiers as well.
+
         """
         return super()._get_params('estimators', deep=deep)
 
     def fit(self, X, y, sample_weight=None):
-        """ Fit the estimators.
+        """Fit the estimators.
 
         Parameters
         ----------
@@ -151,8 +153,8 @@ class _BaseStacking(_BaseComposition, MetaEstimatorMixin, TransformerMixin,
         Returns
         -------
         self : object
-        """
 
+        """
         self._validate_meta_estimator()
 
         if self.estimators is None or len(self.estimators) == 0:
@@ -251,6 +253,7 @@ class _BaseStacking(_BaseComposition, MetaEstimatorMixin, TransformerMixin,
         -------
         y_preds : ndarray, shape (n_samples, n_estimators)
             Prediction outputs for each estimator.
+
         """
         check_is_fitted(self, 'estimators_')
         return self._concatenate_predictions(X, [
@@ -273,8 +276,8 @@ class _BaseStacking(_BaseComposition, MetaEstimatorMixin, TransformerMixin,
         -------
         y_pred : ndarray, shape (n_samples,)
             Predicted targets.
-        """
 
+        """
         check_is_fitted(self, ['estimators_', 'final_estimator_'])
         return self.final_estimator_.predict(self.transform(X))
 
@@ -382,9 +385,11 @@ class StackingClassifier(_BaseStacking, ClassifierMixin):
     0...
 
     """
+
     def __init__(self, estimators, final_estimator=None, cv=None,
                  method_estimators='auto', pass_through=False, n_jobs=1,
                  random_state=None, verbose=0):
+        """Create an instance."""
         super().__init__(
             estimators=estimators,
             final_estimator=final_estimator,
@@ -424,6 +429,7 @@ class StackingClassifier(_BaseStacking, ClassifierMixin):
         -------
         probabilities : ndarray, shape (n_samples, n_classes)
             The class probabilities of the input samples.
+
         """
         check_is_fitted(self, ['estimators_', 'final_estimator_'])
         return self.final_estimator_.predict_proba(self.transform(X))
@@ -531,9 +537,11 @@ class StackingRegressor(_BaseStacking, RegressorMixin):
     0...
 
     """
+
     def __init__(self, estimators, final_estimator=None, cv=None,
                  method_estimators='auto', pass_through=False, n_jobs=1,
                  random_state=None, verbose=0):
+        """Create an instance."""
         super().__init__(
             estimators=estimators,
             final_estimator=final_estimator,

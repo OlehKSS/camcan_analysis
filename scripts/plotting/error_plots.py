@@ -1,3 +1,9 @@
+"""Plot mean absolute error (MAE) figures.
+
+Two types of plots are done:
+    - MAE versus the chronological age,
+    - MAE of one modality versus MAE of another modality.
+"""
 from itertools import combinations
 import os
 import shutil

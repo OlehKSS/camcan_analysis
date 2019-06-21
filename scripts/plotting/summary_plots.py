@@ -1,3 +1,8 @@
+"""
+Prepare boxplot of mean absolute error (MAE) for all modalities.
+
+The information used for plotting will be output as a csv file.
+"""
 import os
 
 import matplotlib.pyplot as plt

@@ -1,3 +1,4 @@
+"""Age prediction using fMRI timeseries of different length."""
 from itertools import product
 import pickle
 

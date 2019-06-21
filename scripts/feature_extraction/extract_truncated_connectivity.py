@@ -1,7 +1,4 @@
-"""
-This script aimed at extracting several time series using the Cam-CAN
-results with different atlases and dump the results somewhere.
-"""
+"""Extract connectivity from fMRI timeseries of different duration."""
 
 import os
 from os.path import join

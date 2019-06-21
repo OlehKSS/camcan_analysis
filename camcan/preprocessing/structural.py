@@ -1,4 +1,4 @@
-"""Structural data from FreeSurfer output"""
+"""Structural data from FreeSurfer output."""
 from itertools import product
 import os
 
@@ -6,8 +6,10 @@ from ..utils import run_fs
 
 
 def get_structural_data(subjects_dir, subject, out_dir):
-    """Extract structural data (cortical sickness, cortical surface area,
-    and subcortical volumes) from FreeSurfer processing output.
+    """Extract structural data.
+
+    The data includes cortical sickness, cortical surface area,
+    and subcortical volumes from FreeSurfer processing output.
 
     Parameters
     ----------
@@ -17,6 +19,7 @@ def get_structural_data(subjects_dir, subject, out_dir):
         The subject, for which data should be extracted.
     out_dir : str
         The output directory.
+
     """
     out_files = get_cortex_data(subjects_dir, subject, out_dir)
     out_files["aseg" + "_file"] = get_volumes_data(subjects_dir, subject,
@@ -41,6 +44,7 @@ def get_volumes_data(subjects_dir, subject, out_dir):
     -------
     out_file : str
         The path to generated data.
+
     """
     subject_dir = os.path.join(out_dir, subject)
 
@@ -74,6 +78,7 @@ def get_cortex_data(subjects_dir, subject, out_dir):
     -------
     out_files : dict
         A dictionary with the paths to generated data.
+
     """
     out_files = {}
     # surfmeasure

@@ -1,4 +1,8 @@
+"""Setup the main package."""
+
+
 def configuration(parent_package='', top_path=None):
+    """Configure the package."""
     from numpy.distutils.misc_util import Configuration
 
     config = Configuration('camcan', parent_package, top_path)

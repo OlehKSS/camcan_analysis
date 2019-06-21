@@ -1,3 +1,4 @@
+"""Age prediction using MRI, fMRI and MEG data."""
 import pickle
 
 import pandas as pd

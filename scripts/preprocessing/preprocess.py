@@ -1,3 +1,4 @@
+"""Include pypreprocess for fMRI data preprocessing."""
 import os
 import sys
 from pypreprocess.nipype_preproc_spm_utils import do_subjects_preproc

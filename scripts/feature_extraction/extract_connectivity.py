@@ -1,7 +1,8 @@
 """
+Extract connectivity from fMRI data.
+
 This script aimed at extracting the connectivity matrices from the time
 series using the Cam-CAN for different atalases and dump them somewhere.
-
 """
 
 import os

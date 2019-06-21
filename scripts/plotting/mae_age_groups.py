@@ -1,3 +1,4 @@
+"""Plot mean absolute error (MAE) versus age group."""
 import os
 
 import matplotlib.pyplot as plt

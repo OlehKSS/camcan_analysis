@@ -1,3 +1,4 @@
+"""Combine connectivity information into a single file."""
 import os
 from os.path import join
 

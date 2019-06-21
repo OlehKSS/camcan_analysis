@@ -1,4 +1,4 @@
-"""Utility functions for parcinging Freesurfer output files"""
+"""Utility functions for parcinging Freesurfer output files."""
 from os.path import join
 
 import nibabel as nb
@@ -18,6 +18,7 @@ def _vectorize_fs_surf(file_path):
     -------
     vectorized_data : numpy.ndarray
         Extracted data.
+
     """
     img = nb.load(file_path)
     in_data = img.get_fdata().squeeze()
@@ -28,6 +29,7 @@ def _vectorize_fs_surf(file_path):
 def get_area(subject_dir, n_points):
     """
     Read area information for the given subject and turn it into a vector.
+
     Data for left and right hemispheres are concatenated.
 
     Parameters
@@ -41,6 +43,7 @@ def get_area(subject_dir, n_points):
     -------
     : numpy.ndarray
         Extracted data.
+
     """
     AREA_FILES = ('lh.area.mgh',  'rh.area.mgh')
 
@@ -55,6 +58,7 @@ def get_area(subject_dir, n_points):
 def get_thickness(subject_dir, n_points):
     """
     Read thickness information for the given subject and turn it into a vector.
+
     Data for left and right hemispheres are concatenated.
 
     Parameters
@@ -68,6 +72,7 @@ def get_thickness(subject_dir, n_points):
     -------
     : numpy.ndarray
         Extracted data.
+
     """
     THICKNESS_FILES = ('rh.thickness.mgh', 'lh.thickness.mgh')
 

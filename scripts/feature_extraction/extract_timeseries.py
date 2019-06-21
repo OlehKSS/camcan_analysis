@@ -1,4 +1,6 @@
 """
+Extract timeseries from fMRI volumes.
+
 This script aimed at extracting several time series using the Cam-CAN
 results with different atlases and dump the results somewhere.
 """

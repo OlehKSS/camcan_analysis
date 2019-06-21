@@ -1,7 +1,8 @@
 """
-The aim of the script is age prediction of CamCan features extracted with
-diferent connectivity matrices and different atlases
+Predict age from connectivity.
 
+The aim of the script is age prediction of CamCan features extracted with
+diferent connectivity matrices and different atlases.
 """
 
 import os
@@ -20,7 +21,7 @@ from sklearn.model_selection import KFold
 
 def camcan_prediction_uni_out(x, y, regr_uni_list, results_path,
                               name_csv_prediction):
-    ''' Unioutput prediction
+    """Unioutput prediction.
 
     :param x: Training vector, array-like, shape (n_samples, n_features)
     :param y: Target vector, array-like, shape (n_samples)
@@ -28,8 +29,7 @@ def camcan_prediction_uni_out(x, y, regr_uni_list, results_path,
     :param results_path: path to the result folder
     :param name_csv_prediction: name of the file to save
     :return: metrics as pandas.DataFrame,
-    '''
-
+    """
     name_regr_list = []
     mse_list = []
     mae_list = []
@@ -86,7 +86,7 @@ def camcan_prediction_uni_out(x, y, regr_uni_list, results_path,
 
 
 def plot_regression(y_target, y_predict, fig_name, fig_path):
-
+    """Plot regression results."""
     plt.scatter(y_target, y_predict)
     fig, ax = plt.subplots()
     ax.scatter(y_target, y_predict)

@@ -1,6 +1,4 @@
-"""
-The :mod:`camcan.utils` module includes various utilities.
-"""
+"""Various utility tools."""
 
 from .atlas import make_masker_from_atlas
 from .shell import run_fs

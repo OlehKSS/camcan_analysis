@@ -1,4 +1,4 @@
-"""Extract connectivity from time series"""
+"""Extract connectivity from time series."""
 
 from nilearn.connectome import ConnectivityMeasure, sym_to_vec
 
@@ -20,7 +20,6 @@ def extract_connectivity(subjects_time_series, kind='tangent'):
         The flattened lower triangular part of the connectivity matrix.
 
     """
-
     fc = ConnectivityMeasure(kind=kind)
     X = fc.fit_transform(subjects_time_series)
     diag = True if kind == 'correlation' else False
