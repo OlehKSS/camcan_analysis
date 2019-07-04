@@ -1,18 +1,30 @@
+# Line 88 what is subjects2 for? why do we take the reduced number of sub
 """Age prediction using MRI, fMRI and MEG data."""
 import pickle
 
 import pandas as pd
-import mne
 
-from camcan.utils import (run_stacking, run_ridge, run_meg_ridge)
+from camcan.utils import (run_stacking_source_space, run_ridge,
+                          run_meg_source_space)
 
 
+# common subjects 574
 CV = 10
 N_JOBS = 4
 PANDAS_OUT_FILE = '../../data/age_prediction_exp_data.h5'
 STRUCTURAL_DATA = '../../data/structural/structural_data.h5'
 CONNECT_DATA_CORR = '../../data/connectivity/connect_data_correlation.h5'
 CONNECT_DATA_TAN = '../../data/connectivity/connect_data_tangent.h5'
+MEG_SOURCE_SPACE_DATA = '../../data/meg_source_space_data.h5'
+FREQ_BANDS = ('alpha',
+              'beta_high',
+              'beta_low',
+              'delta',
+              'gamma_high',
+              'gamma_lo',
+              'gamma_mid',
+              'low',
+              'theta')
 # store mae, learning curves for summary plots
 regression_mae = pd.DataFrame(columns=range(0, CV), dtype=float)
 regression_r2 = pd.DataFrame(columns=range(0, CV), dtype=float)
@@ -25,13 +37,12 @@ subjects_predictions = pd.DataFrame(subjects_data.age,
                                     index=subjects_data.index,
                                     dtype=float)
 
-# 643 subjects, each covariance is 9x306x306
-meg_data = mne.externals.h5io.read_hdf5('../../data/covs_allch_oas.h5')
-meg_subjects = {d['subject'] for d in meg_data if 'subject' in d}
+# 595 subjects
+meg_data = pd.read_hdf(MEG_SOURCE_SPACE_DATA, key='meg')
+meg_subjects = set(meg_data['subject'])
 
-print(f'Found {len(meg_data)} subjects')
-print(f'A covarince matrix shape is {meg_data[0]["covs"].shape}')
-
+# df_pred, mae, r2, train_sizes, train_scores, test_scores =\
+#     run_meg_source_space(meg_data, subjects_data, cv=CV, fbands=FREQ_BANDS)
 # read features
 area_data = pd.read_hdf(STRUCTURAL_DATA, key='area')
 thickness_data = pd.read_hdf(STRUCTURAL_DATA, key='thickness')
@@ -48,6 +59,7 @@ common_subjects = meg_subjects.intersection(structural_subjects)
 area_data = area_data.loc[common_subjects]
 thickness_data = thickness_data.loc[common_subjects]
 volume_data = volume_data.loc[common_subjects]
+meg_data = meg_data[meg_data.subject.isin(common_subjects)]
 
 # read connectivity data
 connect_data_tangent_basc = pd.read_hdf(CONNECT_DATA_TAN, key='basc197')
@@ -61,15 +73,7 @@ connect_data_r2z_basc = connect_data_r2z_basc.loc[common_subjects]
 connect_data_tangent_modl = connect_data_tangent_modl.loc[common_subjects]
 connect_data_r2z_modl = connect_data_r2z_modl.loc[common_subjects]
 
-FREQ_BANDS = [(0.1, 1.5),  # low
-              (1.5, 4.0),  # delta
-              (4.0, 8.0),  # theta
-              (8.0, 15.0),  # alpha
-              (15.0, 26.0),  # beta_low
-              (26.0, 35.0),  # beta_high
-              (35.0, 50.0),  # gamma_low
-              (50.0, 74.0),  # gamma_mid
-              (76.0, 120.0)]  # gamma_high
+print('Data was read successfully.')
 
 data_ref = {
     'Cortical Surface Area': area_data,
@@ -120,10 +124,11 @@ data_ref = {
 for key, data in data_ref.items():
     if 'Stack' in key:
         df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
-            run_stacking(data, subjects_data, cv=CV, fbands=FREQ_BANDS)
+            run_stacking_source_space(data, subjects_data, cv=CV,
+                                      fbands=FREQ_BANDS)
     elif key == 'MEG':
         df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
-            run_meg_ridge(data, subjects_data, cv=CV, fbands=FREQ_BANDS)
+            run_meg_source_space(data, subjects_data, cv=CV, fbands=FREQ_BANDS)
     else:
         df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
             run_ridge(data, subjects_data, cv=CV, n_jobs=N_JOBS)
