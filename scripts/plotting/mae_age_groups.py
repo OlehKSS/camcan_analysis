@@ -50,7 +50,7 @@ plt_colors = {'Cortical Surface Area': '#000075',
 
 age = data.age.values
 
-title = 'MEA per Age Group'
+title = 'MAE per Age Group'
 segment_len = 10  # years
 
 fig, ax = plt.subplots()
