@@ -502,7 +502,7 @@ def run_stacking_source_space(named_data, subjects_data, cv=10, alphas=None,
             trans_slice = slice(ft_begin, ft_end)
             ft_begin = ft_begin + col_len
             feature_transformers.append((trans_name, transformer, trans_slice))
-        print(feature_transformers)
+
         est_name = 'reg_' + named_data[i_data][0]
 
         est_pipeline = make_pipeline(
