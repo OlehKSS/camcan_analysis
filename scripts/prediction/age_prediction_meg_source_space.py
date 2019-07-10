@@ -126,11 +126,11 @@ with threadpool_limits(limits=N_JOBS, user_api='blas'):
         if 'Stack' in key:
             df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
                 run_stacking_source_space(data, subjects_data, cv=cv,
-                                          fbands=FREQ_BANDS)
+                                          fbands=FREQ_BANDS, n_jobs=N_JOBS)
         elif key == 'MEG':
             df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
                 run_meg_source_space(data, subjects_data, cv=cv,
-                                     fbands=FREQ_BANDS)
+                                     fbands=FREQ_BANDS, n_jobs=N_JOBS)
         else:
             df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
                 run_ridge(data, subjects_data, cv=cv, n_jobs=N_JOBS)
