@@ -11,7 +11,7 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import cross_val_score, LeaveOneGroupOut
 
 FIG_OUT_PATH = '../../data/figures/'
-PREDICTIONS = '../../data/age_prediction_exp_data.h5'
+PREDICTIONS = '../../data/age_prediction_exp_data_small.h5'
 SCORES = '../../data/age_prediction_scores.csv'
 
 data = pd.read_hdf(PREDICTIONS, key='predictions')
