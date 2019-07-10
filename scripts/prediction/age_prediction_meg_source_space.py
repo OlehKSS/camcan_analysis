@@ -2,6 +2,7 @@
 import pickle
 
 import pandas as pd
+from sklearn.model_selection import KFold
 
 from camcan.utils import (run_stacking_source_space, run_ridge,
                           run_meg_source_space)
@@ -117,17 +118,19 @@ data_ref = {
                                           ('meg', meg_data)]
 }
 
+cv = KFold(n_splits=CV, shuffle=True, random_state=42)
+
 for key, data in data_ref.items():
     if 'Stack' in key:
         df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
-            run_stacking_source_space(data, subjects_data, cv=CV,
+            run_stacking_source_space(data, subjects_data, cv=cv,
                                       fbands=FREQ_BANDS)
     elif key == 'MEG':
         df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
-            run_meg_source_space(data, subjects_data, cv=CV, fbands=FREQ_BANDS)
+            run_meg_source_space(data, subjects_data, cv=cv, fbands=FREQ_BANDS)
     else:
         df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
-            run_ridge(data, subjects_data, cv=CV, n_jobs=N_JOBS)
+            run_ridge(data, subjects_data, cv=cv, n_jobs=N_JOBS)
 
     arr_mae = -arr_mae
     mae = arr_mae.mean()
@@ -136,7 +139,8 @@ for key, data in data_ref.items():
 
     regression_mae.loc[key] = arr_mae
     regression_r2.loc[key] = arr_r2
-    subjects_predictions.loc[df_pred.index, key] = df_pred[0]
+    subjects_predictions.loc[df_pred.index, key] = df_pred['y']
+    subjects_predictions.loc[df_pred.index, 'fold_idx'] = df_pred['fold']
     learning_curves[key] = {
         'train_sizes': train_sizes,
         'train_scores': train_scores,

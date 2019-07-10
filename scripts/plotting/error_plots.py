@@ -55,6 +55,8 @@ for key1 in keys:
 
 # Plot errors of predictions from different modalities versus each other
 data = data.dropna()
+fold_idx = data['fold_idx']
+data = data.drop(['fold_idx'], axis=1)
 age = data.age.values
 keys = data.columns
 # remove column with the original age
