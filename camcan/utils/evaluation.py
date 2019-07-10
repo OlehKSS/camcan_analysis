@@ -386,7 +386,7 @@ def run_stacking_spoc(named_data, subjects_data, cv=10, alphas=None,
 
     final_estimator = RandomForestRegressor(n_estimators=100,
                                             random_state=rnd_state,
-                                            oob_score=True, n_jobs=n_jobs)
+                                            oob_score=True)
     reg = StackingRegressor(estimators=estimators,
                             final_estimator=final_estimator, cv=cv,
                             random_state=rnd_state, n_jobs=n_jobs)
@@ -512,7 +512,7 @@ def run_stacking_source_space(named_data, subjects_data, cv=10, alphas=None,
 
     final_estimator = RandomForestRegressor(n_estimators=100,
                                             random_state=rnd_state,
-                                            oob_score=True, n_jobs=n_jobs)
+                                            oob_score=True)
     reg = StackingRegressor(estimators=estimators,
                             final_estimator=final_estimator, cv=cv,
                             random_state=rnd_state, n_jobs=n_jobs)
@@ -521,15 +521,16 @@ def run_stacking_source_space(named_data, subjects_data, cv=10, alphas=None,
     X = data.values
 
     kfold_cv = KFold(n_splits=cv, shuffle=True, random_state=rnd_state)
+
     mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error',
-                          cv=kfold_cv, n_jobs=n_jobs)
+                        cv=kfold_cv, n_jobs=n_jobs)
 
     r2 = cross_val_score(reg, X, y, scoring='r2', cv=kfold_cv, n_jobs=n_jobs)
     y_pred = cross_val_predict(reg, X, y, cv=kfold_cv, n_jobs=n_jobs)
 
     train_sizes, train_scores, test_scores = \
         learning_curve(reg, X, y, cv=kfold_cv, train_sizes=train_sizes,
-                       scoring='neg_mean_absolute_error', n_jobs=n_jobs)
+                    scoring='neg_mean_absolute_error', n_jobs=n_jobs)
 
     df_pred = pd.DataFrame(y_pred, index=subjects, dtype=float)
 
@@ -640,7 +641,7 @@ def train_stacked_regressor(named_data, subjects_data, cv=10, alphas=None,
 
     final_estimator = RandomForestRegressor(n_estimators=100,
                                             random_state=rnd_state,
-                                            oob_score=True, n_jobs=n_jobs)
+                                            oob_score=True)
     reg = StackingRegressor(estimators=estimators,
                             final_estimator=final_estimator, cv=cv,
                             random_state=rnd_state, n_jobs=n_jobs)
