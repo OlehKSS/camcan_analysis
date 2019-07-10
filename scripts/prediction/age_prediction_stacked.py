@@ -64,6 +64,7 @@ def get_mae(predictions, key):
         scores.append(np.mean(np.abs(df[key] - df['age'])))
     return scores
 
+
 regression_scores = pd.DataFrame()
 
 for key in key_labels:
