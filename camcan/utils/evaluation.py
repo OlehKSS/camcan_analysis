@@ -396,7 +396,7 @@ def run_stacking_spoc(named_data, subjects_data, cv=10, alphas=None,
 
     final_estimator = RandomForestRegressor(n_estimators=100,
                                             random_state=rnd_state,
-                                            oob_score=True, n_jobs=n_jobs)
+                                            oob_score=True)
     reg = StackingRegressor(estimators=estimators,
                             final_estimator=final_estimator, cv=cv,
                             random_state=rnd_state, n_jobs=n_jobs)
@@ -524,7 +524,7 @@ def run_stacking_source_space(named_data, subjects_data, cv=10, alphas=None,
 
     final_estimator = RandomForestRegressor(n_estimators=100,
                                             random_state=rnd_state,
-                                            oob_score=True, n_jobs=n_jobs)
+                                            oob_score=True)
     reg = StackingRegressor(estimators=estimators,
                             final_estimator=final_estimator, cv=cv,
                             random_state=rnd_state, n_jobs=n_jobs)
@@ -654,7 +654,7 @@ def train_stacked_regressor(named_data, subjects_data, cv=10, alphas=None,
 
     final_estimator = RandomForestRegressor(n_estimators=100,
                                             random_state=rnd_state,
-                                            oob_score=True, n_jobs=n_jobs)
+                                            oob_score=True)
     reg = StackingRegressor(estimators=estimators,
                             final_estimator=final_estimator, cv=cv,
                             random_state=rnd_state, n_jobs=n_jobs)
