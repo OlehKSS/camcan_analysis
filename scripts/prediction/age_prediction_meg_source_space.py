@@ -1,4 +1,3 @@
-# Line 88 what is subjects2 for? why do we take the reduced number of sub
 """Age prediction using MRI, fMRI and MEG data."""
 import pickle
 
@@ -104,20 +103,17 @@ data_ref = {
                                      ('thickness', thickness_data),
                                      ('volume', volume_data),
                                      ('basc',
-                                      connect_data_tangent_basc),
-                                     ('modl', connect_data_r2z_modl)],
+                                      connect_data_tangent_basc)],
     'MEG, MRI Stacked-multimodal': [('area', area_data),
                                     ('thickness', thickness_data),
                                     ('volume', volume_data),
                                     ('meg', meg_data)],
     'MEG, fMRI Stacked-multimodal': [('basc', connect_data_tangent_basc),
-                                     ('modl', connect_data_r2z_modl),
                                      ('meg', meg_data)],
     'MEG, MRI, fMRI Stacked-multimodal': [('area', area_data),
                                           ('thickness', thickness_data),
                                           ('volume', volume_data),
                                           ('basc', connect_data_tangent_basc),
-                                          ('modl', connect_data_r2z_modl),
                                           ('meg', meg_data)]
 }
 

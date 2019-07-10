@@ -4,3 +4,5 @@ ipython error_plots.py
 ipython predictions.py
 ipython summary_plots.py
 ipython learning_curves.py
+ipython statistics.py
+ipython mae_age_groups.py
