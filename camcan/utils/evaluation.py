@@ -11,12 +11,19 @@ from sklearn.linear_model import RidgeCV
 from sklearn.model_selection import (cross_val_score,
                                      cross_val_predict,
                                      learning_curve,
-                                     ShuffleSplit,
-                                     KFold)
+                                     ShuffleSplit, check_cv)
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from ..processing import StackingRegressor, SPoC
+
+
+def _get_fold_indices(cv, X, y):
+    fold = -np.ones(len(y), dtype=int)
+    for fold_idx, (_, test) in enumerate(cv.split(X, y)):
+        fold[test] = fold_idx
+    assert np.all(fold >= 0)
+    return fold
 
 
 def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None,
@@ -76,19 +83,20 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None,
     X = data.values
 
     reg = make_pipeline(StandardScaler(), RidgeCV(alphas))
-    # Monte Carlo cross-validation
-    cv_ss = ShuffleSplit(n_splits=cv, random_state=42)
 
+    cv = check_cv(cv)
     mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error',
-                          cv=cv_ss, n_jobs=n_jobs)
-    r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv_ss, n_jobs=n_jobs)
+                          cv=cv, n_jobs=n_jobs)
+    r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv, n_jobs=n_jobs)
     y_pred = cross_val_predict(reg, X, y, cv=cv, n_jobs=n_jobs)
 
     train_sizes, train_scores, test_scores = \
-        learning_curve(reg, X, y, cv=cv_ss, train_sizes=train_sizes,
-                       scoring='neg_mean_absolute_error',  n_jobs=n_jobs)
+        learning_curve(reg, X, y, cv=cv, train_sizes=train_sizes,
+                       scoring='neg_mean_absolute_error', n_jobs=n_jobs)
 
-    df_pred = pd.DataFrame(y_pred, index=subjects, dtype=float)
+    fold = _get_fold_indices(cv, X, y)
+    df_pred = pd.DataFrame(dict(y=y_pred, fold=fold), index=subjects,
+                           dtype=float)
 
     return df_pred, mae, r2, train_sizes, train_scores, test_scores
 
@@ -249,19 +257,21 @@ def run_meg_source_space(data, subjects_data, cv=10, alphas=None,
 
     reg = make_pipeline(StandardScaler(),
                         RidgeCV(alphas))
-    # Monte Carlo cross-validation
-    cv_ss = ShuffleSplit(n_splits=cv, random_state=42)
+
+    cv = check_cv(cv)
 
     mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error',
-                          cv=cv_ss, n_jobs=n_jobs)
-    r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv_ss, n_jobs=n_jobs)
+                          cv=cv, n_jobs=n_jobs)
+    r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv, n_jobs=n_jobs)
     y_pred = cross_val_predict(reg, X, y, cv=cv, n_jobs=n_jobs)
 
     train_sizes, train_scores, test_scores =\
-        learning_curve(reg, X, y, cv=cv_ss, train_sizes=train_sizes,
+        learning_curve(reg, X, y, cv=cv, train_sizes=train_sizes,
                        scoring='neg_mean_absolute_error', n_jobs=n_jobs)
 
-    df_pred = pd.DataFrame(y_pred, index=subjects, dtype=float)
+    fold = _get_fold_indices(cv, X, y)
+    df_pred = pd.DataFrame(dict(y=y_pred, fold=fold), index=subjects,
+                           dtype=float)
 
     return df_pred, mae, r2, train_sizes, train_scores, test_scores
 
@@ -394,18 +404,20 @@ def run_stacking_spoc(named_data, subjects_data, cv=10, alphas=None,
     y = subjects_data.loc[subjects].age.values
     X = data.values
 
-    kfold_cv = KFold(n_splits=cv, shuffle=True, random_state=rnd_state)
+    cv = check_cv(cv)
     mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error',
-                          cv=kfold_cv, n_jobs=n_jobs)
+                          cv=cv, n_jobs=n_jobs)
 
-    r2 = cross_val_score(reg, X, y, scoring='r2', cv=kfold_cv, n_jobs=n_jobs)
-    y_pred = cross_val_predict(reg, X, y, cv=kfold_cv, n_jobs=n_jobs)
+    r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv, n_jobs=n_jobs)
+    y_pred = cross_val_predict(reg, X, y, cv=cv, n_jobs=n_jobs)
 
     train_sizes, train_scores, test_scores = \
-        learning_curve(reg, X, y, cv=kfold_cv, train_sizes=train_sizes,
+        learning_curve(reg, X, y, cv=cv, train_sizes=train_sizes,
                        scoring='neg_mean_absolute_error', n_jobs=n_jobs)
 
-    df_pred = pd.DataFrame(y_pred, index=subjects, dtype=float)
+    fold = _get_fold_indices(cv, X, y)
+    df_pred = pd.DataFrame(dict(y=y_pred, fold=fold), index=subjects,
+                           dtype=float)
 
     return df_pred, mae, r2, train_sizes, train_scores, test_scores
 
@@ -520,19 +532,20 @@ def run_stacking_source_space(named_data, subjects_data, cv=10, alphas=None,
     y = subjects_data.loc[subjects].age.values
     X = data.values
 
-    kfold_cv = KFold(n_splits=cv, shuffle=True, random_state=rnd_state)
-
+    cv = check_cv(cv)
     mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error',
-                        cv=kfold_cv, n_jobs=n_jobs)
+                          cv=cv, n_jobs=n_jobs)
 
-    r2 = cross_val_score(reg, X, y, scoring='r2', cv=kfold_cv, n_jobs=n_jobs)
-    y_pred = cross_val_predict(reg, X, y, cv=kfold_cv, n_jobs=n_jobs)
+    r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv, n_jobs=n_jobs)
+    y_pred = cross_val_predict(reg, X, y, cv=cv, n_jobs=n_jobs)
 
     train_sizes, train_scores, test_scores = \
-        learning_curve(reg, X, y, cv=kfold_cv, train_sizes=train_sizes,
-                    scoring='neg_mean_absolute_error', n_jobs=n_jobs)
+        learning_curve(reg, X, y, cv=cv, train_sizes=train_sizes,
+                       scoring='neg_mean_absolute_error', n_jobs=n_jobs)
 
-    df_pred = pd.DataFrame(y_pred, index=subjects, dtype=float)
+    fold = _get_fold_indices(cv, X, y)
+    df_pred = pd.DataFrame(dict(y=y_pred, fold=fold), index=subjects,
+                           dtype=float)
 
     return df_pred, mae, r2, train_sizes, train_scores, test_scores
 
