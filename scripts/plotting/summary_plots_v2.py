@@ -41,7 +41,7 @@ key_labels = {'Cortical Surface Area': 'Cortical Surface Area',
               }
 
 
-all_regressions = all_regressions.T[key_labels.keys()].T
+all_regressions = all_regressions.T[list(key_labels.keys())].T
 all_regressions.index = key_labels.values()
 all_regressions = all_regressions.iloc[::-1]
 
