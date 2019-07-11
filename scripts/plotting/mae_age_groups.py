@@ -4,6 +4,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 
 
 FIG_OUT_PATH = '../../data/figures/'
@@ -13,40 +14,33 @@ OUT_FTYPE = 'pdf'
 data = pd.read_hdf(PREDICTIONS, key='predictions')
 data = data.dropna()
 
+colors = sns.color_palette("Blues", 3)
+colors += [(1, 0, 0)]
+colors += sns.color_palette("Oranges", 1)
+colors += list(reversed(sns.light_palette('black', 4)))
+
 # Plot summary boxplot
 keys = ['Cortical Surface Area',
         'Cortical Thickness',
         'Subcortical Volumes',
         'Connectivity Matrix, BASC 197 tan',
-        'Connectivity Matrix, MODL 256 r2z',
         'MEG',
-        'MRI Stacked',
-        'fMRI Stacked',
         'MRI, fMRI Stacked-multimodal',
+        'MEG, MRI Stacked-multimodal',
+        'MEG, fMRI Stacked-multimodal',
         'MEG, MRI, fMRI Stacked-multimodal']
 
 plt_labels = {'Cortical Surface Area': 'Cortical Surface Area',
               'Cortical Thickness': 'Cortical Thickness',
               'Subcortical Volumes': 'Subcortical Volumes',
-              'Connectivity Matrix, BASC 197 tan': 'BASC 197 tan',
-              'Connectivity Matrix, MODL 256 r2z': 'MODL 256 r2z',
+              'Connectivity Matrix, BASC 197 tan': 'fMRI',
               'MEG': 'MEG',
-              'MRI Stacked': 'MRI Stacked',
-              'fMRI Stacked': 'fMRI Stacked',
-              'MRI, fMRI Stacked-multimodal': 'MRI, fMRI Stacked',
-              'MEG, MRI, fMRI Stacked-multimodal': 'MEG, MRI, fMRI Stacked'}
+              'MRI, fMRI Stacked-multimodal': 'MRI + fMRI',
+              'MEG, MRI Stacked-multimodal': 'MEG + MRI',
+              'MEG, fMRI Stacked-multimodal': 'MEG + fMRI',
+              'MEG, MRI, fMRI Stacked-multimodal': 'MEG + MRI + fMRI'}
 
-plt_colors = {'Cortical Surface Area': '#000075',
-              'Cortical Thickness': '#4363d8',
-              'Subcortical Volumes': '#42d4f4',
-              'Connectivity Matrix, BASC 197 tan': '#3cb44b',
-              'Connectivity Matrix, MODL 256 r2z': '#808000',
-              'MEG': '#f032e6',
-              'MRI Stacked': '#000075',
-              'fMRI Stacked': '#3cb44b',
-              'MRI, fMRI Stacked-multimodal': '#f58231',
-              'MEG, MRI, fMRI Stacked-multimodal': '#f032e6'}
-
+plt_colors = {k: c for k, c in zip(keys, colors)}
 
 age = data.age.values
 
