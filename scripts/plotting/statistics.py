@@ -7,6 +7,7 @@ import pandas as pd
 import seaborn as sns
 from sklearn.inspection import plot_partial_dependence
 
+from camcan.processing import permutation_importance
 from camcan.utils import train_stacked_regressor
 
 # common subjects 574
@@ -42,8 +43,6 @@ subjects_predictions = pd.DataFrame(subjects_data.age,
 meg_data = pd.read_hdf(MEG_SOURCE_SPACE_DATA, key='meg')
 meg_subjects = set(meg_data['subject'])
 
-# df_pred, mae, r2, train_sizes, train_scores, test_scores =\
-#     run_meg_source_space(meg_data, subjects_data, cv=CV, fbands=FREQ_BANDS)
 # read features
 area_data = pd.read_hdf(STRUCTURAL_DATA, key='area')
 thickness_data = pd.read_hdf(STRUCTURAL_DATA, key='thickness')
@@ -93,22 +92,27 @@ OUT_FTYPE = 'pdf'
 out_folder = os.path.join(FIG_OUT_PATH, 'boxplots')
 
 title = 'Feature Importance'
-# >>> tips = sns.load_dataset("tips")
-# change x, y to make a plot horizontal or vertical
-plot_keys = ('Cortical Surface Area',
-             'Cortical Thickness',
-             'Subcortical Volumes',
-             'BASC 197 tan',
+
+plot_keys = ('CSA', # Cortical Surface Area
+             'CT', # Cortical Thickness
+             'SV', # Subcortical Volumes
+             'fMRI',
              'MEG')
+
+colors = sns.color_palette("Blues", 3)
+colors += [(1, 0, 0)]
+colors += sns.color_palette("Oranges", 1)
+
 plot_data = pd.DataFrame(reg.final_estimator_.feature_importances_,
                          index=plot_keys)
+plot_data['colors'] = colors
 plot_data = plot_data.sort_values(0, ascending=False)
 
 sns.set(style='whitegrid')
 plt.figure()
-ax = sns.barplot(x=plot_data[0], y=plot_data.index)
+ax = sns.barplot(x=plot_data[0], y=plot_data.index, palette=plot_data.colors)
 ax.set_title(title)
-ax.set(xlabel='Features')
+ax.set(xlabel='Importance')
 ax.spines['bottom'].set_color('black')
 ax.spines['top'].set_color('black')
 ax.spines['right'].set_color('black')
@@ -125,5 +129,30 @@ style.use('default')
 plt.grid()
 plot_partial_dependence(reg.final_estimator_, reg.transform(X), features,
                         feature_names=plot_keys, fig=fig, num_contours=10)
+
 name = f'partial_dependence_.{OUT_FTYPE}'
+plt.savefig(os.path.join(out_folder, name), bbox_inches='tight')
+
+# plot permutation importance
+title = 'Permutation Importances'
+result = permutation_importance(reg.final_estimator_, reg.transform(X), y,
+                                n_repeats=10, random_state=42)
+
+plot_data = pd.DataFrame(result.importances_mean,
+                         index=plot_keys)
+plot_data['colors'] = colors
+plot_data = plot_data.sort_values(0, ascending=False)
+
+sns.set(style='whitegrid')
+plt.figure()
+ax = sns.barplot(x=plot_data[0], y=plot_data.index, palette=plot_data.colors)
+ax.set_title(title)
+ax.set(xlabel='Importance')
+ax.spines['bottom'].set_color('black')
+ax.spines['top'].set_color('black')
+ax.spines['right'].set_color('black')
+ax.spines['left'].set_color('black')
+ax.tick_params(axis='x', colors='black', bottom=True)
+
+name = f'permutation_importance.{OUT_FTYPE}'
 plt.savefig(os.path.join(out_folder, name), bbox_inches='tight')
