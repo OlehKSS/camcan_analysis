@@ -1,11 +1,12 @@
 """Prepare plots of statistical significance of features."""
 import os
 
+from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 from matplotlib import style
 import pandas as pd
 import seaborn as sns
-from sklearn.inspection import plot_partial_dependence
+from sklearn.inspection import partial_dependence
 
 from camcan.processing import permutation_importance
 from camcan.utils import train_stacked_regressor
@@ -93,9 +94,9 @@ out_folder = os.path.join(FIG_OUT_PATH, 'boxplots')
 
 title = 'Feature Importance'
 
-plot_keys = ('CSA', # Cortical Surface Area
-             'CT', # Cortical Thickness
-             'SV', # Subcortical Volumes
+plot_keys = ('CSA',  # Cortical Surface Area
+             'CT',  # Cortical Thickness
+             'SV',  # Subcortical Volumes
              'fMRI',
              'MEG')
 
@@ -123,14 +124,25 @@ name = f'feature_importance_rf.{OUT_FTYPE}'
 plt.savefig(os.path.join(out_folder, name), bbox_inches='tight')
 
 # plot partial dependence
+title = 'Partial Dependence'
 features = [0, 1, 2, 3, 4]
+
+pd_result = Parallel(n_jobs=len(features))(
+    delayed(partial_dependence)(reg.final_estimator_,
+                                reg.transform(X), f)
+    for f in features)
+
 fig = plt.figure()
 style.use('default')
 plt.grid()
-plot_partial_dependence(reg.final_estimator_, reg.transform(X), features,
-                        feature_names=plot_keys, fig=fig, num_contours=10)
 
-name = f'partial_dependence_.{OUT_FTYPE}'
+for index, (pdp, axes) in enumerate(pd_result):
+    plt.plot(axes[0], pdp[0, :], color=colors[index], label=plot_keys[index])
+
+plt.title(title)
+plt.legend()
+
+name = f'partial_dependence.{OUT_FTYPE}'
 plt.savefig(os.path.join(out_folder, name), bbox_inches='tight')
 
 # plot permutation importance
