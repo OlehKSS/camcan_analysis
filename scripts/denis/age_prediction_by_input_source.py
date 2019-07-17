@@ -1,8 +1,11 @@
 """Age prediction using MRI, fMRI and MEG data."""
 import pickle
 
+import numpy as np
 import pandas as pd
 from sklearn.model_selection import KFold
+
+from mne.externals import h5io
 
 from camcan.utils import (run_stacking_source_space, run_ridge,
                           run_meg_source_space)
@@ -19,6 +22,7 @@ CONNECT_DATA_TAN = './data/connectivity/connect_data_tangent.h5'
 MEG_SOURCE_SPACE_DATA = './data/meg_source_space_data.h5'
 MEG_EXTRA_DATA = './data/meg_extra_data.h5'
 MEG_PEAKS = './data/evoked_peaks.csv'
+MEG_ENV_CORR = './data/all_power_envelopes.h5'
 
 FREQ_BANDS = ('alpha',
               'beta_high',
@@ -29,6 +33,7 @@ FREQ_BANDS = ('alpha',
               'gamma_mid',
               'low',
               'theta')
+
 # store mae, learning curves for summary plots
 regression_mae = pd.DataFrame(columns=range(0, CV), dtype=float)
 regression_r2 = pd.DataFrame(columns=range(0, CV), dtype=float)
@@ -49,6 +54,42 @@ meg_extra = pd.read_hdf(MEG_EXTRA_DATA, key='MEG_rest_extra')
 meg_extra = meg_extra.reset_index()
 
 meg_peaks = pd.read_csv(MEG_PEAKS)
+
+meg_envelopes = h5io.read_hdf5(MEG_ENV_CORR)
+
+C_index = np.eye(448, dtype=np.bool)
+C_index = np.invert(C_index[np.triu_indices(448)])
+
+meg_envelope_subjects = list(meg_envelopes)
+meg_envelope_alpha_corr = pd.DataFrame(
+    [meg_envelopes[sub]['alpha'].pop('corr')[C_index] for sub in meg_envelope_subjects],
+    index=meg_envelope_subjects)
+
+meg_envelope_beta1_corr = pd.DataFrame(
+    [meg_envelopes[sub]['beta_low'].pop('corr')[C_index] for sub in
+     meg_envelope_subjects],
+    index=meg_envelope_subjects)
+
+meg_envelope_beta2_corr = pd.DataFrame(
+    [meg_envelopes[sub]['beta_high'].pop('corr')[C_index]
+     for sub in meg_envelope_subjects],
+    index=meg_envelope_subjects)
+
+meg_envelope_alpha_orth = pd.DataFrame(
+    [meg_envelopes[sub]['alpha'].pop('corr_orth')[C_index]
+     for sub in meg_envelope_subjects],
+    index=meg_envelope_subjects)
+
+meg_envelope_beta1_orth = pd.DataFrame(
+    [meg_envelopes[sub]['beta_low'].pop('corr_orth')[C_index]
+     for sub in meg_envelope_subjects],
+    index=meg_envelope_subjects)
+
+meg_envelope_beta2_orth = pd.DataFrame(
+    [meg_envelopes[sub]['beta_high'].pop('corr_orth')[C_index]
+     for sub in meg_envelope_subjects],
+    index=meg_envelope_subjects)
+
 
 meg_subjects = (meg_subjects.intersection(meg_extra['subject'])
                             .intersection(meg_peaks['subject']))
@@ -98,11 +139,16 @@ data_ref = {
     'Connectivity Matrix, MODL 256 tan': connect_data_tangent_modl,
     # 'Connectivity Matrix, MODL 256 r2z': connect_data_r2z_modl,
     'MEG': meg_data,
+    'MEG alpha corr': meg_envelope_alpha_corr,
+    'MEG alpha orth': meg_envelope_alpha_orth,
+    'MEG beta1 corr': meg_envelope_beta1_corr,
+    'MEG beta1 orth': meg_envelope_beta1_orth,
+    'MEG beta2 corr': meg_envelope_beta2_corr,
+    'MEG beta2 orth': meg_envelope_beta2_orth,
     'MEG 1/f low': meg_extra.set_index("subject")[
         [cc for cc in meg_extra.columns if '1f_low' in cc]],
     'MEG 1/f gamma': meg_extra.set_index("subject")[
         [cc for cc in meg_extra.columns if '1f_gamma' in cc]],
-    # 'MEG alpha peak': meg_extra['alpha_peak'],
     'MEG, Cortical Surface Area Stacked-multimodal': [('area', area_data),
                                                       ('meg', meg_data)],
     'MEG, Cortical Thickness Stacked-multimodal': [('thickness',
