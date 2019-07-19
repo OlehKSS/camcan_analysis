@@ -76,6 +76,9 @@ connect_data_r2z_modl = connect_data_r2z_modl.loc[common_subjects]
 
 print('Data was read successfully.')
 
+# test on one modality, subject suffling
+# test modality shuffling
+
 data_ref = {
     'Cortical Surface Area': area_data,
     'Cortical Thickness': thickness_data,
