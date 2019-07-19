@@ -14,11 +14,11 @@ from threadpoolctl import threadpool_limits
 # common subjects 574
 CV = 10
 N_JOBS = 4
-PANDAS_OUT_FILE = '../../data/age_prediction_exp_data.h5'
-STRUCTURAL_DATA = '../../data/structural/structural_data.h5'
-CONNECT_DATA_CORR = '../../data/connectivity/connect_data_correlation.h5'
-CONNECT_DATA_TAN = '../../data/connectivity/connect_data_tangent.h5'
-MEG_SOURCE_SPACE_DATA = '../../data/meg_source_space_data.h5'
+PANDAS_OUT_FILE = '../../../data/age_prediction_exp_data.h5'
+STRUCTURAL_DATA = '../../../data/structural/structural_data.h5'
+CONNECT_DATA_CORR = '../../../data/connectivity/connect_data_correlation.h5'
+CONNECT_DATA_TAN = '../../../data/connectivity/connect_data_tangent.h5'
+MEG_SOURCE_SPACE_DATA = '../../../data/meg_source_space_data.h5'
 FREQ_BANDS = ('alpha',
               'beta_high',
               'beta_low',
@@ -34,7 +34,7 @@ regression_r2 = pd.DataFrame(columns=range(0, CV), dtype=float)
 learning_curves = {}
 
 # read information about subjects
-subjects_data = pd.read_csv('../../data/participant_data.csv', index_col=0)
+subjects_data = pd.read_csv('../../../data/participant_data.csv', index_col=0)
 # for storing predictors data
 subjects_predictions = pd.DataFrame(subjects_data.age,
                                     index=subjects_data.index,
