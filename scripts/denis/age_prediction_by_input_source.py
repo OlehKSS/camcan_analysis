@@ -61,8 +61,25 @@ C_index = np.eye(448, dtype=np.bool)
 C_index = np.invert(C_index[np.triu_indices(448)])
 
 meg_envelope_subjects = list(meg_envelopes)
+
+meg_envelope_alpha_cov = pd.DataFrame(
+    [meg_envelopes[sub]['alpha'].pop('cov') for sub in
+     meg_envelope_subjects],
+    index=meg_envelope_subjects)
+
+meg_envelope_beta1_cov = pd.DataFrame(
+    [meg_envelopes[sub]['beta_low'].pop('cov') for sub in
+     meg_envelope_subjects],
+    index=meg_envelope_subjects)
+
+meg_envelope_beta2_cov = pd.DataFrame(
+    [meg_envelopes[sub]['beta_high'].pop('cov')
+     for sub in meg_envelope_subjects],
+    index=meg_envelope_subjects)
+
 meg_envelope_alpha_corr = pd.DataFrame(
-    [meg_envelopes[sub]['alpha'].pop('corr')[C_index] for sub in meg_envelope_subjects],
+    [meg_envelopes[sub]['alpha'].pop('corr')[C_index] for sub in
+     meg_envelope_subjects],
     index=meg_envelope_subjects)
 
 meg_envelope_beta1_corr = pd.DataFrame(
@@ -139,10 +156,13 @@ data_ref = {
     'Connectivity Matrix, MODL 256 tan': connect_data_tangent_modl,
     # 'Connectivity Matrix, MODL 256 r2z': connect_data_r2z_modl,
     'MEG': meg_data,
+    'MEG alpha cov': meg_envelope_alpha_cov,
     'MEG alpha corr': meg_envelope_alpha_corr,
     'MEG alpha orth': meg_envelope_alpha_orth,
+    'MEG beta1 cov': meg_envelope_beta1_cov,
     'MEG beta1 corr': meg_envelope_beta1_corr,
     'MEG beta1 orth': meg_envelope_beta1_orth,
+    'MEG beta2 cov': meg_envelope_beta2_cov,
     'MEG beta2 corr': meg_envelope_beta2_corr,
     'MEG beta2 orth': meg_envelope_beta2_orth,
     'MEG 1/f low': meg_extra.set_index("subject")[
@@ -185,6 +205,43 @@ data_ref = {
 
 cv = KFold(n_splits=CV, shuffle=True, random_state=42)
 
+
+def run_ridge_boost(data, subjects_data, cv=10, alphas=None, train_sizes=None,
+                    n_jobs=None):
+    if alphas is None:
+        alphas = np.logspace(-3, 5, 100)
+    if train_sizes is None:
+        train_sizes = np.linspace(.1, 1.0, 5)
+
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import RidgeCV
+    from sklearn.ensemble import AdaBoostRegressor
+    from sklearn.model_selection import (cross_val_score,
+                                         cross_val_predict,
+                                         learning_curve,
+                                         ShuffleSplit, check_cv)
+    # prepare data, subjects age
+    subjects = data.index.values
+    y = subjects_data.loc[subjects].age.values
+    X = data.values
+
+    reg = make_pipeline(StandardScaler(), RidgeCV(alphas))
+
+    cv = check_cv(cv)
+    # mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error',
+    #                       cv=cv, n_jobs=n_jobs)
+    # r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv, n_jobs=n_jobs)
+    # y_pred = cross_val_predict(reg, X, y, cv=cv, n_jobs=n_jobs)
+    # fold = _get_fold_indices(cv, X, y)
+    for train, test in cv.s
+
+
+    df_pred = pd.DataFrame(dict(y=y_pred, fold=fold), index=subjects,
+                           dtype=float)
+
+    return df_pred, mae, r2, train_sizes, train_scores, test_scores
+
 with threadpool_limits(limits=N_JOBS, user_api='blas'):
     for key, data in data_ref.items():
         if 'Stack' in key:
@@ -218,7 +275,7 @@ with threadpool_limits(limits=N_JOBS, user_api='blas'):
         }
 
 # save results
-with open('.data/learning_curves_denis.pkl', 'wb') as handle:
+with open('./data/learning_curves_denis.pkl', 'wb') as handle:
     pickle.dump(learning_curves, handle, protocol=pickle.HIGHEST_PROTOCOL)
 # with open('filename.pickle', 'rb') as handle:
 #     b = pickle.load(handle)

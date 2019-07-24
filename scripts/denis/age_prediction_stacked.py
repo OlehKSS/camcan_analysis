@@ -69,31 +69,31 @@ stacked_keys = {
         'MEG beta2 corr',
         'MEG beta2 orth'
     ],
-    'full': [
-        'MEG',
-        'MEG 1/f low',
-        'MEG 1/f gamma',
-        'MEG alpha peak',
-        'MEG latency aud',
-        'MEG latency vis',
-        'Cortical Surface Area',
-        'Cortical Thickness',
-        'Subcortical Volumes',
-        'Connectivity Matrix, MODL 256 tan',
-        'MEG alpha corr',
-        'MEG alpha orth',
-        'MEG beta1 corr',
-        'MEG beta1 orth',
-        'MEG beta2 corr',
-        'MEG beta2 orth'
-    ],
+    # 'full': [
+    #     'MEG',
+    #     'MEG 1/f low',
+    #     'MEG 1/f gamma',
+    #     'MEG alpha peak',
+    #     'MEG latency aud',
+    #     'MEG latency vis',
+    #     'Cortical Surface Area',
+    #     'Cortical Thickness',
+    #     'Subcortical Volumes',
+    #     'Connectivity Matrix, MODL 256 tan',
+    #     'MEG alpha corr',
+    #     'MEG alpha orth',
+    #     'MEG beta1 corr',
+    #     'MEG beta1 orth',
+    #     'MEG beta2 corr',
+    #     'MEG beta2 orth'
+    # ],
 
-    'full': [
-        'Cortical Surface Area',
-        'Cortical Thickness',
-        'Subcortical Volumes',
-        'Connectivity Matrix, MODL 256 tan',
-    ],
+    # 'MRI': [
+    #     'Cortical Surface Area',
+    #     'Cortical Thickness',
+    #     'Subcortical Volumes',
+    #     'Connectivity Matrix, MODL 256 tan',
+    # ],
 
     # 'MEG, Cortical Surface Area Stacked-multimodal': ['Cortical Surface Area',
     #                                                   'MEG'],
@@ -175,7 +175,9 @@ for key, val in stacked_keys.items():
 
     cv = LeaveOneGroupOut()
 
-    scores = -cross_val_score(reg, X, y, cv=cv, groups=fold_idx,
+    scores = -cross_val_score(reg,
+                              X,
+                              y, cv=cv, groups=fold_idx,
                               scoring='neg_mean_absolute_error',
                               n_jobs=-1)
 
@@ -184,4 +186,3 @@ for key, val in stacked_keys.items():
 
 
 regression_scores.to_csv(SCORES, index=False)
-# 
