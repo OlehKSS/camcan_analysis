@@ -4,8 +4,7 @@ import pickle
 import pandas as pd
 from sklearn.model_selection import KFold
 
-from camcan.utils import (run_stacking_source_space, run_ridge,
-                          run_meg_source_space)
+from camcan.utils import (run_stacking, run_ridge)
 from threadpoolctl import threadpool_limits
 
 
@@ -38,12 +37,17 @@ subjects_predictions = pd.DataFrame(subjects_data.age,
                                     index=subjects_data.index,
                                     dtype=float)
 
-# 595 subjects
+# prepare meg data
 meg_data = pd.read_hdf(MEG_SOURCE_SPACE_DATA, key='meg')
-meg_subjects = set(meg_data['subject'])
 
-# df_pred, mae, r2, train_sizes, train_scores, test_scores =\
-#     run_meg_source_space(meg_data, subjects_data, cv=CV, fbands=FREQ_BANDS)
+columns_to_exclude = ('band', 'fmax', 'fmin', 'subject')
+parcellation_labels = [c for c in meg_data.columns if c
+                       not in columns_to_exclude]
+band_data = [meg_data[meg_data.band == bb].set_index('subject')[
+             parcellation_labels] for bb in FREQ_BANDS]
+meg_data = pd.concat(band_data, axis=1, join='inner', sort=False)
+meg_subjects = set(meg_data.index)
+
 # read features
 area_data = pd.read_hdf(STRUCTURAL_DATA, key='area')
 thickness_data = pd.read_hdf(STRUCTURAL_DATA, key='thickness')
@@ -60,7 +64,7 @@ common_subjects = meg_subjects.intersection(structural_subjects)
 area_data = area_data.loc[common_subjects]
 thickness_data = thickness_data.loc[common_subjects]
 volume_data = volume_data.loc[common_subjects]
-meg_data = meg_data[meg_data.subject.isin(common_subjects)]
+meg_data = meg_data.loc[common_subjects]
 
 # read connectivity data
 connect_data_tangent_basc = pd.read_hdf(CONNECT_DATA_TAN, key='basc197')
@@ -75,9 +79,6 @@ connect_data_tangent_modl = connect_data_tangent_modl.loc[common_subjects]
 connect_data_r2z_modl = connect_data_r2z_modl.loc[common_subjects]
 
 print('Data was read successfully.')
-
-# test on one modality, subject suffling
-# test modality shuffling
 
 data_ref = {
     'Cortical Surface Area': area_data,
@@ -128,12 +129,8 @@ with threadpool_limits(limits=N_JOBS, user_api='blas'):
     for key, data in data_ref.items():
         if 'Stack' in key:
             df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
-                run_stacking_source_space(data, subjects_data, cv=cv,
-                                          fbands=FREQ_BANDS, n_jobs=N_JOBS)
-        elif key == 'MEG':
-            df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
-                run_meg_source_space(data, subjects_data, cv=cv,
-                                     fbands=FREQ_BANDS, n_jobs=N_JOBS)
+                run_stacking(data, subjects_data, cv=cv, fbands=FREQ_BANDS,
+                             n_jobs=N_JOBS)
         else:
             df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
                 run_ridge(data, subjects_data, cv=cv, n_jobs=N_JOBS)
@@ -156,8 +153,6 @@ with threadpool_limits(limits=N_JOBS, user_api='blas'):
 # save results
 with open('../../data/learning_curves.pkl', 'wb') as handle:
     pickle.dump(learning_curves, handle, protocol=pickle.HIGHEST_PROTOCOL)
-# with open('filename.pickle', 'rb') as handle:
-#     b = pickle.load(handle)
 
 subjects_predictions.to_hdf(PANDAS_OUT_FILE, key='predictions', complevel=9)
 regression_mae.to_hdf(PANDAS_OUT_FILE, key='regression', complevel=9)
