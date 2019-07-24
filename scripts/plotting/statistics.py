@@ -90,8 +90,7 @@ data = [('area', area_data),
         ('basc', connect_data_tangent_basc),
         ('meg', meg_data)]
 
-reg, X, y = train_stacked_regressor(data, subjects_data, cv=CV,
-                                    fbands=FREQ_BANDS)
+reg, X, y = train_stacked_regressor(data, subjects_data, cv=CV)
 
 # plot feature importance from GINI
 FIG_OUT_PATH = '../../data/figures/'

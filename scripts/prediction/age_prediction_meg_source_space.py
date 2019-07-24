@@ -129,8 +129,7 @@ with threadpool_limits(limits=N_JOBS, user_api='blas'):
     for key, data in data_ref.items():
         if 'Stack' in key:
             df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
-                run_stacking(data, subjects_data, cv=cv, fbands=FREQ_BANDS,
-                             n_jobs=N_JOBS)
+                run_stacking(data, subjects_data, cv=cv, n_jobs=N_JOBS)
         else:
             df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
                 run_ridge(data, subjects_data, cv=cv, n_jobs=N_JOBS)

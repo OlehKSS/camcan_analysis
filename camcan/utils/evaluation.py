@@ -340,7 +340,7 @@ def run_stacking_spoc(named_data, subjects_data, cv=10, alphas=None,
 
 
 def run_stacking(named_data, subjects_data, cv=10, alphas=None,
-                 train_sizes=None, fbands=None, n_jobs=None):
+                 train_sizes=None, n_jobs=None):
     """Run stacking.
 
     Parameters
@@ -378,9 +378,6 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None,
         Note that for classification the number of samples usually have to
         be big enough to contain at least one sample from each class.
         (default: np.linspace(0.1, 1.0, 5))
-
-    fbands : [str]
-        List of frequency bands to be checked.
 
     n_jobs : int or None, optional (default=None)
         The number of CPUs to use to do the computation.
@@ -456,7 +453,7 @@ def run_stacking(named_data, subjects_data, cv=10, alphas=None,
 
 
 def train_stacked_regressor(named_data, subjects_data, cv=10, alphas=None,
-                            train_sizes=None, fbands=None, n_jobs=None):
+                            train_sizes=None, n_jobs=None):
     """Return stacked classifier trained on provided data.
 
     For MEG data features estimated in the source space should be provided.
@@ -496,9 +493,6 @@ def train_stacked_regressor(named_data, subjects_data, cv=10, alphas=None,
         Note that for classification the number of samples usually have to
         be big enough to contain at least one sample from each class.
         (default: np.linspace(0.1, 1.0, 5))
-
-    fbands : [str]
-        List of frequency bands to be checked.
 
     n_jobs : int or None, optional (default=None)
         The number of CPUs to use to do the computation.
