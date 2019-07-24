@@ -42,7 +42,14 @@ subjects_predictions = pd.DataFrame(subjects_data.age,
 
 # 595 subjects
 meg_data = pd.read_hdf(MEG_SOURCE_SPACE_DATA, key='meg')
-meg_subjects = set(meg_data['subject'])
+
+columns_to_exclude = ('band', 'fmax', 'fmin', 'subject')
+parcellation_labels = [c for c in meg_data.columns if c
+                       not in columns_to_exclude]
+band_data = [meg_data[meg_data.band == bb].set_index('subject')[
+                parcellation_labels] for bb in FREQ_BANDS]
+meg_data = pd.concat(band_data, axis=1, join='inner', sort=False)
+meg_subjects = set(meg_data.index)
 
 # read features
 area_data = pd.read_hdf(STRUCTURAL_DATA, key='area')
@@ -60,7 +67,7 @@ common_subjects = meg_subjects.intersection(structural_subjects)
 area_data = area_data.loc[common_subjects]
 thickness_data = thickness_data.loc[common_subjects]
 volume_data = volume_data.loc[common_subjects]
-meg_data = meg_data[meg_data.subject.isin(common_subjects)]
+meg_data = meg_data.loc[common_subjects]
 
 # read connectivity data
 connect_data_tangent_basc = pd.read_hdf(CONNECT_DATA_TAN, key='basc197')
@@ -83,8 +90,7 @@ data = [('area', area_data),
         ('basc', connect_data_tangent_basc),
         ('meg', meg_data)]
 
-reg, X, y = train_stacked_regressor(data, subjects_data, cv=CV,
-                                    fbands=FREQ_BANDS)
+reg, X, y = train_stacked_regressor(data, subjects_data, cv=CV)
 
 # plot feature importance from GINI
 FIG_OUT_PATH = '../../data/figures/'

@@ -193,89 +193,6 @@ def run_meg_spoc(data, subjects_data, cv=10, alphas=None,
     return df_pred, mae, r2, train_sizes, train_scores, test_scores
 
 
-def run_meg_source_space(data, subjects_data, cv=10, alphas=None,
-                         train_sizes=None, fbands=None, n_jobs=None):
-    """Run ridge resgression on MEG signals in the source space.
-
-    Parameters
-    ----------
-    data : pandas.DataFrame
-        Features to be used for predictions.
-
-    subjects_data : pandas.DataFrame
-        Information about subjects from CamCAN dataset.
-
-    cv : int, cross-validation generator or an iterable, optional
-        Determines the cross-validation splitting strategy.
-        Possible inputs for cv are:
-
-        - None, to use the default 3-fold cross validation,
-        - integer, to specify the number of folds in a `(Stratified)KFold`,
-        - :term:`CV splitter`,
-        - An iterable yielding (train, test) splits as arrays of indices.
-
-        For integer/None inputs, if the estimator is a classifier and ``y`` is
-        either binary or multiclass, :class:`StratifiedKFold` is used. In all
-        other cases, :class:`KFold` is used.
-
-    alphas : numpy.ndarray
-        Values for parameter alpha to be tested using RidgeCV. Default is
-        np.logspace(start=-3, stop=1, num=50, base=10.0).
-
-    train_sizes : array-like, shape (n_ticks,), dtype float or int
-        Relative or absolute numbers of training examples that will be used to
-        generate the learning curve. If the dtype is float, it is regarded as a
-        fraction of the maximum size of the training set (that is determined
-        by the selected validation method), i.e. it has to be within (0, 1].
-        Otherwise it is interpreted as absolute sizes of the training sets.
-        Note that for classification the number of samples usually have to
-        be big enough to contain at least one sample from each class.
-        (default: np.linspace(0.1, 1.0, 5))
-
-    fbands : [str]
-        List of frequency bands to be checked.
-
-    n_jobs : int or None, optional (default=None)
-        The number of CPUs to use to do the computation.
-        ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
-        ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
-        for more details.
-
-    """
-    if alphas is None:
-        alphas = np.logspace(-3, 5, 100)
-    if train_sizes is None:
-        train_sizes = np.linspace(.1, 1.0, 5)
-
-    columns_to_exclude = ('band', 'fmax', 'fmin', 'subject')
-    parcellation_labels = [c for c in data.columns if c
-                           not in columns_to_exclude]
-    subjects = data[data.fmin == 8].subject
-    X = np.concatenate([data[data.band == bb][parcellation_labels].values
-                        for bb in fbands], 1)
-    y = subjects_data.loc[subjects].age.values
-
-    reg = make_pipeline(StandardScaler(),
-                        RidgeCV(alphas))
-
-    cv = check_cv(cv)
-
-    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error',
-                          cv=cv, n_jobs=n_jobs)
-    r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv, n_jobs=n_jobs)
-    y_pred = cross_val_predict(reg, X, y, cv=cv, n_jobs=n_jobs)
-
-    train_sizes, train_scores, test_scores =\
-        learning_curve(reg, X, y, cv=cv, train_sizes=train_sizes,
-                       scoring='neg_mean_absolute_error', n_jobs=n_jobs)
-
-    fold = _get_fold_indices(cv, X, y)
-    df_pred = pd.DataFrame(dict(y=y_pred, fold=fold), index=subjects,
-                           dtype=float)
-
-    return df_pred, mae, r2, train_sizes, train_scores, test_scores
-
-
 def run_stacking_spoc(named_data, subjects_data, cv=10, alphas=None,
                       train_sizes=None, fbands=None, n_jobs=None):
     """Run stacking.
@@ -422,9 +339,9 @@ def run_stacking_spoc(named_data, subjects_data, cv=10, alphas=None,
     return df_pred, mae, r2, train_sizes, train_scores, test_scores
 
 
-def run_stacking_source_space(named_data, subjects_data, cv=10, alphas=None,
-                              train_sizes=None, fbands=None, n_jobs=None):
-    """Run stacking with MEG signals from the source space.
+def run_stacking(named_data, subjects_data, cv=10, alphas=None,
+                 train_sizes=None, n_jobs=None):
+    """Run stacking.
 
     Parameters
     ----------
@@ -462,9 +379,6 @@ def run_stacking_source_space(named_data, subjects_data, cv=10, alphas=None,
         be big enough to contain at least one sample from each class.
         (default: np.linspace(0.1, 1.0, 5))
 
-    fbands : [str]
-        List of frequency bands to be checked.
-
     n_jobs : int or None, optional (default=None)
         The number of CPUs to use to do the computation.
         ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
@@ -480,22 +394,10 @@ def run_stacking_source_space(named_data, subjects_data, cv=10, alphas=None,
     rnd_state = 42
     names = []
     combined_data = []
-    meg_data = None
     # extract data and estimator names
     for name, data in named_data:
         names.append(name)
-        if name == 'meg':
-            columns_to_exclude = ('band', 'fmax', 'fmin', 'subject')
-            parcellation_labels = [c for c in data.columns if c not
-                                   in columns_to_exclude]
-            meg_subjects = data[data.fmin == 8].subject
-            meg_data = np.concatenate(
-                [data[data.band == bb][parcellation_labels].values
-                    for bb in fbands], 1)
-            meg_data = pd.DataFrame(meg_data, index=meg_subjects)
-            combined_data.append(meg_data)
-        else:
-            combined_data.append(data)
+        combined_data.append(data)
 
     data = pd.concat(combined_data, axis=1, join='inner')
     feature_col_lens = tuple(d.shape[1] for d in combined_data)
@@ -551,7 +453,7 @@ def run_stacking_source_space(named_data, subjects_data, cv=10, alphas=None,
 
 
 def train_stacked_regressor(named_data, subjects_data, cv=10, alphas=None,
-                            train_sizes=None, fbands=None, n_jobs=None):
+                            train_sizes=None, n_jobs=None):
     """Return stacked classifier trained on provided data.
 
     For MEG data features estimated in the source space should be provided.
@@ -592,9 +494,6 @@ def train_stacked_regressor(named_data, subjects_data, cv=10, alphas=None,
         be big enough to contain at least one sample from each class.
         (default: np.linspace(0.1, 1.0, 5))
 
-    fbands : [str]
-        List of frequency bands to be checked.
-
     n_jobs : int or None, optional (default=None)
         The number of CPUs to use to do the computation.
         ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
@@ -610,22 +509,10 @@ def train_stacked_regressor(named_data, subjects_data, cv=10, alphas=None,
     rnd_state = 42
     names = []
     combined_data = []
-    meg_data = None
     # extract data and estimator names
     for name, data in named_data:
         names.append(name)
-        if name == 'meg':
-            columns_to_exclude = ('band', 'fmax', 'fmin', 'subject')
-            parcellation_labels = [c for c in data.columns if c not
-                                   in columns_to_exclude]
-            meg_subjects = data[data.fmin == 8].subject
-            meg_data = np.concatenate(
-                [data[data.band == bb][parcellation_labels].values
-                    for bb in fbands], 1)
-            meg_data = pd.DataFrame(meg_data, index=meg_subjects)
-            combined_data.append(meg_data)
-        else:
-            combined_data.append(data)
+        combined_data.append(data)
 
     data = pd.concat(combined_data, axis=1, join='inner')
     feature_col_lens = tuple(d.shape[1] for d in combined_data)

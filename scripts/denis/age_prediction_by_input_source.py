@@ -7,8 +7,7 @@ from sklearn.model_selection import KFold
 
 from mne.externals import h5io
 
-from camcan.utils import (run_stacking_source_space, run_ridge,
-                          run_meg_source_space)
+from camcan.utils import (run_stacking, run_ridge)
 from threadpoolctl import threadpool_limits
 
 
@@ -48,7 +47,14 @@ subjects_predictions = pd.DataFrame(subjects_data.age,
 
 # 595 subjects
 meg_data = pd.read_hdf(MEG_SOURCE_SPACE_DATA, key='meg')
-meg_subjects = set(meg_data['subject'])
+
+columns_to_exclude = ('band', 'fmax', 'fmin', 'subject')
+parcellation_labels = [c for c in meg_data.columns if c
+                       not in columns_to_exclude]
+band_data = [meg_data[meg_data.band == bb].set_index('subject')[
+                parcellation_labels] for bb in FREQ_BANDS]
+meg_data = pd.concat(band_data, axis=1, join='inner', sort=False)
+meg_subjects = set(meg_data.index)
 
 meg_extra = pd.read_hdf(MEG_EXTRA_DATA, key='MEG_rest_extra')
 meg_extra = meg_extra.reset_index()
@@ -129,7 +135,7 @@ common_subjects = meg_subjects.intersection(structural_subjects)
 area_data = area_data.loc[common_subjects]
 thickness_data = thickness_data.loc[common_subjects]
 volume_data = volume_data.loc[common_subjects]
-meg_data = meg_data[meg_data.subject.isin(common_subjects)]
+meg_data = meg_data.loc[common_subjects]
 meg_extra = meg_extra[meg_extra.subject.isin(common_subjects)]
 meg_peaks = meg_peaks[meg_peaks.subject.isin(common_subjects)]
 
@@ -248,13 +254,8 @@ with threadpool_limits(limits=N_JOBS, user_api='blas'):
             continue
             if False:
                 (df_pred, arr_mae, arr_r2, train_sizes, train_scores,
-                 test_scores) = run_stacking_source_space(
-                    data, subjects_data, cv=cv, fbands=FREQ_BANDS,
-                    n_jobs=N_JOBS)
-        elif key == 'MEG':
-            df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
-                run_meg_source_space(data, subjects_data, cv=cv,
-                                     fbands=FREQ_BANDS, n_jobs=N_JOBS)
+                 test_scores) = run_stacking(
+                    data, subjects_data, cv=cv, n_jobs=N_JOBS)
         else:
             df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
                 run_ridge(data, subjects_data, cv=cv, n_jobs=N_JOBS)
