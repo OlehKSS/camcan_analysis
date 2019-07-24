@@ -135,7 +135,7 @@ common_subjects = meg_subjects.intersection(structural_subjects)
 area_data = area_data.loc[common_subjects]
 thickness_data = thickness_data.loc[common_subjects]
 volume_data = volume_data.loc[common_subjects]
-meg_data = meg_data[meg_data.subject.isin(common_subjects)]
+meg_data = meg_data.loc[common_subjects]
 meg_extra = meg_extra[meg_extra.subject.isin(common_subjects)]
 meg_peaks = meg_peaks[meg_peaks.subject.isin(common_subjects)]
 
