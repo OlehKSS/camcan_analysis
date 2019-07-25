@@ -1,4 +1,4 @@
-"""Script for extracting structural data from FreeSurfer outputs."""
+"""Extract structural data from FreeSurfer outputs."""
 import os
 from os.path import isdir, join
 

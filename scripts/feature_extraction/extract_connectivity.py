@@ -1,5 +1,5 @@
 """
-Extract connectivity from fMRI data.
+Extract connectivity from fMRI timeseries.
 
 This script aimed at extracting the connectivity matrices from the time
 series using the Cam-CAN for different atalases and dump them somewhere.
