@@ -11,7 +11,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 DISTNAME = 'camcan'
 DESCRIPTION = 'Package to play with Cam-CAN data.'
-with codecs.open('README.rst', encoding='utf-8-sig') as f:
+with codecs.open('README.md', encoding='utf-8-sig') as f:
     LONG_DESCRIPTION = f.read()
 MAINTAINER = 'Some people'
 MAINTAINER_EMAIL = ('some.people@example.com')
