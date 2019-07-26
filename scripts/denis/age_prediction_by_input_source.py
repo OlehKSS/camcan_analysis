@@ -1,4 +1,5 @@
 """Age prediction using MRI, fMRI and MEG data."""
+import os.path as op
 import pickle
 
 import numpy as np
@@ -10,10 +11,16 @@ from mne.externals import h5io
 from camcan.utils import (run_stacking, run_ridge)
 from threadpoolctl import threadpool_limits
 
+##############################################################################
+# Control paramaters
 
 # common subjects 574
 CV = 10
 N_JOBS = 2
+
+##############################################################################
+# Paths
+
 PANDAS_OUT_FILE = './data/age_prediction_exp_data_denis.h5'
 STRUCTURAL_DATA = './data/structural/structural_data.h5'
 CONNECT_DATA_CORR = './data/connectivity/connect_data_correlation.h5'
@@ -22,6 +29,31 @@ MEG_SOURCE_SPACE_DATA = './data/meg_source_space_data.h5'
 MEG_EXTRA_DATA = './data/meg_extra_data.h5'
 MEG_PEAKS = './data/evoked_peaks.csv'
 MEG_ENV_CORR = './data/all_power_envelopes.h5'
+
+DRAGO_PATH = '/storage/inria/agramfor/camcan_derivatives'
+
+##############################################################################
+# Subject info
+
+# read information about subjects
+subjects_data = pd.read_csv('./data/participant_data.csv', index_col=0)
+# for storing predictors data
+subjects_predictions = pd.DataFrame(subjects_data.age,
+                                    index=subjects_data.index,
+                                    dtype=float)
+
+##############################################################################
+# MEG features
+#
+# 1. Marginal Power
+# 2. Cross-Power
+# 3. Envelope Power
+# 4. Envelope Cross-Power
+# 5. Envelope Connectivity
+# 6. Envelope Orthogonalized Connectivity
+# 7. 1/f
+# 8. Alpha peak
+# 9. ERF delay
 
 FREQ_BANDS = ('alpha',
               'beta_high',
@@ -33,89 +65,86 @@ FREQ_BANDS = ('alpha',
               'low',
               'theta')
 
-# store mae, learning curves for summary plots
-regression_mae = pd.DataFrame(columns=range(0, CV), dtype=float)
-regression_r2 = pd.DataFrame(columns=range(0, CV), dtype=float)
-learning_curves = {}
+meg_source_power = h5io.read_hdf5(
+    op.join(DRAGO_PATH, 'all_mne_source_power.h5'))
 
-# read information about subjects
-subjects_data = pd.read_csv('./data/participant_data.csv', index_col=0)
-# for storing predictors data
-subjects_predictions = pd.DataFrame(subjects_data.age,
-                                    index=subjects_data.index,
-                                    dtype=float)
-
-# 595 subjects
-meg_data = pd.read_hdf(MEG_SOURCE_SPACE_DATA, key='meg')
-
-columns_to_exclude = ('band', 'fmax', 'fmin', 'subject')
-parcellation_labels = [c for c in meg_data.columns if c
-                       not in columns_to_exclude]
-band_data = [meg_data[meg_data.band == bb].set_index('subject')[
-                parcellation_labels] for bb in FREQ_BANDS]
-meg_data = pd.concat(band_data, axis=1, join='inner', sort=False)
-meg_subjects = set(meg_data.index)
-
-meg_extra = pd.read_hdf(MEG_EXTRA_DATA, key='MEG_rest_extra')
-meg_extra = meg_extra.reset_index()
-
-meg_peaks = pd.read_csv(MEG_PEAKS)
-
-meg_envelopes = h5io.read_hdf5(MEG_ENV_CORR)
-
-C_index = np.eye(448, dtype=np.bool)
-C_index = np.invert(C_index[np.triu_indices(448)])
-
-meg_envelope_subjects = list(meg_envelopes)
-
-meg_envelope_alpha_cov = pd.DataFrame(
-    [meg_envelopes[sub]['alpha'].pop('cov') for sub in
-     meg_envelope_subjects],
-    index=meg_envelope_subjects)
-
-meg_envelope_beta1_cov = pd.DataFrame(
-    [meg_envelopes[sub]['beta_low'].pop('cov') for sub in
-     meg_envelope_subjects],
-    index=meg_envelope_subjects)
-
-meg_envelope_beta2_cov = pd.DataFrame(
-    [meg_envelopes[sub]['beta_high'].pop('cov')
-     for sub in meg_envelope_subjects],
-    index=meg_envelope_subjects)
-
-meg_envelope_alpha_corr = pd.DataFrame(
-    [meg_envelopes[sub]['alpha'].pop('corr')[C_index] for sub in
-     meg_envelope_subjects],
-    index=meg_envelope_subjects)
-
-meg_envelope_beta1_corr = pd.DataFrame(
-    [meg_envelopes[sub]['beta_low'].pop('corr')[C_index] for sub in
-     meg_envelope_subjects],
-    index=meg_envelope_subjects)
-
-meg_envelope_beta2_corr = pd.DataFrame(
-    [meg_envelopes[sub]['beta_high'].pop('corr')[C_index]
-     for sub in meg_envelope_subjects],
-    index=meg_envelope_subjects)
-
-meg_envelope_alpha_orth = pd.DataFrame(
-    [meg_envelopes[sub]['alpha'].pop('corr_orth')[C_index]
-     for sub in meg_envelope_subjects],
-    index=meg_envelope_subjects)
-
-meg_envelope_beta1_orth = pd.DataFrame(
-    [meg_envelopes[sub]['beta_low'].pop('corr_orth')[C_index]
-     for sub in meg_envelope_subjects],
-    index=meg_envelope_subjects)
-
-meg_envelope_beta2_orth = pd.DataFrame(
-    [meg_envelopes[sub]['beta_high'].pop('corr_orth')[C_index]
-     for sub in meg_envelope_subjects],
-    index=meg_envelope_subjects)
+# 'all_power_envelopes-{band}'
 
 
-meg_subjects = (meg_subjects.intersection(meg_extra['subject'])
-                            .intersection(meg_peaks['subject']))
+# # 595 subjects
+# meg_data = pd.read_hdf(MEG_SOURCE_SPACE_DATA, key='meg')
+
+# columns_to_exclude = ('band', 'fmax', 'fmin', 'subject')
+# parcellation_labels = [c for c in meg_data.columns if c
+#                        not in columns_to_exclude]
+# band_data = [meg_data[meg_data.band == bb].set_index('subject')[
+#              parcellation_labels] for bb in FREQ_BANDS]
+# meg_data = pd.concat(band_data, axis=1, join='inner', sort=False)
+# meg_subjects = set(meg_data.index)
+
+# meg_extra = pd.read_hdf(MEG_EXTRA_DATA, key='MEG_rest_extra')
+# meg_extra = meg_extra.reset_index()
+
+# meg_peaks = pd.read_csv(MEG_PEAKS)
+
+# meg_envelopes = h5io.read_hdf5(MEG_ENV_CORR)
+
+# C_index = np.eye(448, dtype=np.bool)
+# C_index = np.invert(C_index[np.triu_indices(448)])
+
+# meg_envelope_subjects = list(meg_envelopes)
+
+# meg_envelope_alpha_cov = pd.DataFrame(
+#     [meg_envelopes[sub]['alpha'].pop('cov') for sub in
+#      meg_envelope_subjects],
+#     index=meg_envelope_subjects)
+
+# meg_envelope_beta1_cov = pd.DataFrame(
+#     [meg_envelopes[sub]['beta_low'].pop('cov') for sub in
+#      meg_envelope_subjects],
+#     index=meg_envelope_subjects)
+
+# meg_envelope_beta2_cov = pd.DataFrame(
+#     [meg_envelopes[sub]['beta_high'].pop('cov')
+#      for sub in meg_envelope_subjects],
+#     index=meg_envelope_subjects)
+
+# meg_envelope_alpha_corr = pd.DataFrame(
+#     [meg_envelopes[sub]['alpha'].pop('corr')[C_index] for sub in
+#      meg_envelope_subjects],
+#     index=meg_envelope_subjects)
+
+# meg_envelope_beta1_corr = pd.DataFrame(
+#     [meg_envelopes[sub]['beta_low'].pop('corr')[C_index] for sub in
+#      meg_envelope_subjects],
+#     index=meg_envelope_subjects)
+
+# meg_envelope_beta2_corr = pd.DataFrame(
+#     [meg_envelopes[sub]['beta_high'].pop('corr')[C_index]
+#      for sub in meg_envelope_subjects],
+#     index=meg_envelope_subjects)
+
+# meg_envelope_alpha_orth = pd.DataFrame(
+#     [meg_envelopes[sub]['alpha'].pop('corr_orth')[C_index]
+#      for sub in meg_envelope_subjects],
+#     index=meg_envelope_subjects)
+
+# meg_envelope_beta1_orth = pd.DataFrame(
+#     [meg_envelopes[sub]['beta_low'].pop('corr_orth')[C_index]
+#      for sub in meg_envelope_subjects],
+#     index=meg_envelope_subjects)
+
+# meg_envelope_beta2_orth = pd.DataFrame(
+#     [meg_envelopes[sub]['beta_high'].pop('corr_orth')[C_index]
+#      for sub in meg_envelope_subjects],
+#     index=meg_envelope_subjects)
+
+
+# meg_subjects = (meg_subjects.intersection(meg_extra['subject'])
+#                             .intersection(meg_peaks['subject']))
+
+##############################################################################
+# MRI features
 
 # df_pred, mae, r2, train_sizes, train_scores, test_scores =\
 #     run_meg_source_space(meg_data, subjects_data, cv=CV, fbands=FREQ_BANDS)
@@ -130,6 +159,11 @@ volume_data = volume_data.dropna()
 
 # take only subjects that are both in MEG and Structural MRI
 structural_subjects = set(area_data.index)
+
+
+##############################################################################
+# Bundle all data
+
 common_subjects = meg_subjects.intersection(structural_subjects)
 
 area_data = area_data.loc[common_subjects]
@@ -152,6 +186,7 @@ connect_data_tangent_modl = connect_data_tangent_modl.loc[common_subjects]
 connect_data_r2z_modl = connect_data_r2z_modl.loc[common_subjects]
 
 print('Data was read successfully.')
+
 
 data_ref = {
     'Cortical Surface Area': area_data,
@@ -209,45 +244,20 @@ data_ref = {
                                           ('meg', meg_data)]
 }
 
+
+##############################################################################
+# Prepare outputs
+
+# store mae, learning curves for summary plots
+regression_mae = pd.DataFrame(columns=range(0, CV), dtype=float)
+regression_r2 = pd.DataFrame(columns=range(0, CV), dtype=float)
+learning_curves = {}
+
+
+##############################################################################
+# Main analysis
+
 cv = KFold(n_splits=CV, shuffle=True, random_state=42)
-
-
-def run_ridge_boost(data, subjects_data, cv=10, alphas=None, train_sizes=None,
-                    n_jobs=None):
-    if alphas is None:
-        alphas = np.logspace(-3, 5, 100)
-    if train_sizes is None:
-        train_sizes = np.linspace(.1, 1.0, 5)
-
-    from sklearn.pipeline import make_pipeline
-    from sklearn.preprocessing import StandardScaler
-    from sklearn.linear_model import RidgeCV
-    from sklearn.ensemble import AdaBoostRegressor
-    from sklearn.model_selection import (cross_val_score,
-                                         cross_val_predict,
-                                         learning_curve,
-                                         ShuffleSplit, check_cv)
-    # prepare data, subjects age
-    subjects = data.index.values
-    y = subjects_data.loc[subjects].age.values
-    X = data.values
-
-    reg = make_pipeline(StandardScaler(), RidgeCV(alphas))
-
-    cv = check_cv(cv)
-    # mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error',
-    #                       cv=cv, n_jobs=n_jobs)
-    # r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv, n_jobs=n_jobs)
-    # y_pred = cross_val_predict(reg, X, y, cv=cv, n_jobs=n_jobs)
-    # fold = _get_fold_indices(cv, X, y)
-    for train, test in cv.s
-
-
-    df_pred = pd.DataFrame(dict(y=y_pred, fold=fold), index=subjects,
-                           dtype=float)
-
-    return df_pred, mae, r2, train_sizes, train_scores, test_scores
-
 with threadpool_limits(limits=N_JOBS, user_api='blas'):
     for key, data in data_ref.items():
         if 'Stack' in key:
