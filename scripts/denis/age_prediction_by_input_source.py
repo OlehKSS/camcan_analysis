@@ -259,7 +259,7 @@ cv = KFold(n_splits=CV, shuffle=True, random_state=42)
 with threadpool_limits(limits=N_JOBS, user_api='blas'):
     for key, data in data_ref.items():
         if isinstance(data, dict):
-            data = read_meg_rest_data(**data)
+            data = read_meg_rest_data(**data).loc[common_subjects]
 
         df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
             run_ridge(data, subjects_data, cv=cv, n_jobs=N_JOBS)
