@@ -5,11 +5,25 @@ import pickle
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import KFold
+from joblib import Memory
 
 from mne.externals import h5io
 
 from camcan.utils import (run_stacking, run_ridge)
 from threadpoolctl import threadpool_limits
+from camcan.processing import map_tangent
+
+##############################################################################
+# Paths
+
+DRAGO_PATH = '/storage/inria/agramfor/camcan_derivatives'
+OLEH_PATH = '/storage/tompouce/okozynet/projects/camcan_analysis/data'
+PANDAS_OUT_FILE = './data/age_prediction_exp_data_denis.h5'
+STRUCTURAL_DATA = f'{OLEH_PATH}/structural/structural_data.h5'
+CONNECT_DATA_CORR = f'{OLEH_PATH}/connectivity/connect_data_correlation.h5'
+CONNECT_DATA_TAN = f'{OLEH_PATH}/connectivity/connect_data_tangent.h5'
+MEG_EXTRA_DATA = './data/meg_extra_data.h5'
+MEG_PEAKS = './data/evoked_peaks.csv'
 
 ##############################################################################
 # Control paramaters
@@ -17,20 +31,7 @@ from threadpoolctl import threadpool_limits
 # common subjects 574
 CV = 10
 N_JOBS = 2
-
-##############################################################################
-# Paths
-
-PANDAS_OUT_FILE = './data/age_prediction_exp_data_denis.h5'
-STRUCTURAL_DATA = './data/structural/structural_data.h5'
-CONNECT_DATA_CORR = './data/connectivity/connect_data_correlation.h5'
-CONNECT_DATA_TAN = './data/connectivity/connect_data_tangent.h5'
-MEG_SOURCE_SPACE_DATA = './data/meg_source_space_data.h5'
-MEG_EXTRA_DATA = './data/meg_extra_data.h5'
-MEG_PEAKS = './data/evoked_peaks.csv'
-MEG_ENV_CORR = './data/all_power_envelopes.h5'
-
-DRAGO_PATH = '/storage/inria/agramfor/camcan_derivatives'
+memory = Memory(location=DRAGO_PATH)
 
 ##############################################################################
 # Subject info
@@ -65,90 +66,131 @@ FREQ_BANDS = ('alpha',
               'low',
               'theta')
 
-meg_source_power = h5io.read_hdf5(
-    op.join(DRAGO_PATH, 'all_mne_source_power.h5'))
+meg_source_types = (
+    'mne_power_diag',
+    'mne_power_cross',
+    'mne_envelope_diag',
+    'mne_envelope_cross',
+    'mne_envelope_corr',
+    'mne_envelope_corr_orth'
 
-# 'all_power_envelopes-{band}'
+)
 
+def vec_to_sym(data, n_rows, skip_diag=True):
+    """Put vector back in matrix form""" 
+    if skip_diag:
+        k = 1
+    else:
+        k = 0
+    C = np.zeros((n_rows, n_rows), dtype=np.float64)
+    C[np.triu_indices(n=n_rows, k=k)] = data
+    C += C.T
+    C.flat[::n_rows + 1 ] = np.diag(C) / 2.
+    return C
 
-# # 595 subjects
-# meg_data = pd.read_hdf(MEG_SOURCE_SPACE_DATA, key='meg')
+def make_covs(diag, data, n_labels):
+    if not np.isscalar(diag):
+        assert np.all(diag.index == data.index)
+    covs = np.empty(shape=(len(data), n_labels, n_labels))
+    for ii, (this_cross) in enumerate(data.values):
+        C = vec_to_sym(this_cross, n_labels)
+        if np.isscalar(diag):
+            this_diag = diag
+        else:
+            this_diag = diag.values[ii]
+        C.flat[::n_labels + 1] = this_diag
+        covs[ii] = C
+    return covs
 
-# columns_to_exclude = ('band', 'fmax', 'fmin', 'subject')
-# parcellation_labels = [c for c in meg_data.columns if c
-#                        not in columns_to_exclude]
-# band_data = [meg_data[meg_data.band == bb].set_index('subject')[
-#              parcellation_labels] for bb in FREQ_BANDS]
-# meg_data = pd.concat(band_data, axis=1, join='inner', sort=False)
-# meg_subjects = set(meg_data.index)
+@memory.cache
+def read_meg_rest_data(kind, band, n_labels=448):
+    """Read the resting state data (600 subjects)
+    
+    Read connectivity outptus and do some additional
+    preprocessing.
 
-# meg_extra = pd.read_hdf(MEG_EXTRA_DATA, key='MEG_rest_extra')
-# meg_extra = meg_extra.reset_index()
+    Parameters
+    ----------
+    kind : str
+        The type of MEG feature.
+    band : str
+        The frequency band.
+    n_label: int
+        The number of ROIs in source space.
+    """
+    if kind == 'mne_power_diag':
+        data = pd.read_hdf(
+            op.join(DRAGO_PATH, f'mne_source_power_diag-{band}.h5'),
+            key=kind)
+    elif kind == 'mne_power_cross':
+        # We need the diagonal powers to do tangent mapping.
+        # but then we will discard it.
+        diag = read_meg_rest_data(kind='mne_power_diag', band=band)
+        # undp log10
+        diag = diag.transform(lambda x: 10 ** x)
+        index = diag.index.copy()
 
-# meg_peaks = pd.read_csv(MEG_PEAKS)
+        data = pd.read_hdf(
+            op.join(DRAGO_PATH, f'mne_source_power_cross-{band}.h5'),
+            key=kind)
+        covs = make_covs(diag, data, n_labels)
+        data = map_tangent(covs, diag=True)
+        data = pd.DataFrame(data=data, index=index)
+    if kind == 'mne_envelope_diag':
+        data = pd.read_hdf(
+            op.join(DRAGO_PATH, f'mne_envelopes_diag_{band}.h5'),
+            key=kind)
+    elif kind == 'mne_envelope_cross':
+        # We need the diagonal powers to do tangent mapping.
+        # but then we will discard it.
+        diag = read_meg_rest_data(kind='mne_envelope_diag', band=band)
+        # undp log10
+        diag = diag.transform(lambda x: 10 ** x)
+        index = diag.index.copy()
 
-# meg_envelopes = h5io.read_hdf5(MEG_ENV_CORR)
+        data = pd.read_hdf(
+            op.join(DRAGO_PATH, f'mne_envelopes_cross_{band}.h5'),
+            key=kind)
+        covs = make_covs(diag, data, n_labels)
+        data = map_tangent(covs, diag=True)
+        data = pd.DataFrame(data=data, index=index)
+    elif kind == 'mne_envelope_corr':
+        # The diagonal is simply one.
+        diag = 1.0
+        data = pd.read_hdf(
+            op.join(DRAGO_PATH, f'mne_envelopes_corr_{band}.h5'),
+            key=kind)
+        index = data.index.copy()
 
-# C_index = np.eye(448, dtype=np.bool)
-# C_index = np.invert(C_index[np.triu_indices(448)])
+        data = map_tangent(make_covs(diag, data, n_labels),
+                           diag=True)
+        data = pd.DataFrame(data=data, index=index)
 
-# meg_envelope_subjects = list(meg_envelopes)
+    elif kind == 'mne_envelope_corr_orth':
+        data = pd.read_hdf(
+            op.join(DRAGO_PATH, f'mne_envelopes_corr_orth_{band}.h5'),
+            key=kind)
+        # The result here is not an SPD matrix.
+        # We do do Fisher's Z-transform instead.
+        # https://en.wikipedia.org/wiki/Fisher_transformation
+        data = data.transform(np.arctanh)
+    return data
 
-# meg_envelope_alpha_cov = pd.DataFrame(
-#     [meg_envelopes[sub]['alpha'].pop('cov') for sub in
-#      meg_envelope_subjects],
-#     index=meg_envelope_subjects)
+meg_power_alpha = read_meg_rest_data(
+    kind='mne_power_diag', band='alpha')
 
-# meg_envelope_beta1_cov = pd.DataFrame(
-#     [meg_envelopes[sub]['beta_low'].pop('cov') for sub in
-#      meg_envelope_subjects],
-#     index=meg_envelope_subjects)
+meg_subjects = set(meg_power_alpha.index)
 
-# meg_envelope_beta2_cov = pd.DataFrame(
-#     [meg_envelopes[sub]['beta_high'].pop('cov')
-#      for sub in meg_envelope_subjects],
-#     index=meg_envelope_subjects)
+meg_extra = pd.read_hdf(MEG_EXTRA_DATA, key='MEG_rest_extra')
 
-# meg_envelope_alpha_corr = pd.DataFrame(
-#     [meg_envelopes[sub]['alpha'].pop('corr')[C_index] for sub in
-#      meg_envelope_subjects],
-#     index=meg_envelope_subjects)
+meg_peaks = pd.read_csv(MEG_PEAKS).set_index('subject')
 
-# meg_envelope_beta1_corr = pd.DataFrame(
-#     [meg_envelopes[sub]['beta_low'].pop('corr')[C_index] for sub in
-#      meg_envelope_subjects],
-#     index=meg_envelope_subjects)
-
-# meg_envelope_beta2_corr = pd.DataFrame(
-#     [meg_envelopes[sub]['beta_high'].pop('corr')[C_index]
-#      for sub in meg_envelope_subjects],
-#     index=meg_envelope_subjects)
-
-# meg_envelope_alpha_orth = pd.DataFrame(
-#     [meg_envelopes[sub]['alpha'].pop('corr_orth')[C_index]
-#      for sub in meg_envelope_subjects],
-#     index=meg_envelope_subjects)
-
-# meg_envelope_beta1_orth = pd.DataFrame(
-#     [meg_envelopes[sub]['beta_low'].pop('corr_orth')[C_index]
-#      for sub in meg_envelope_subjects],
-#     index=meg_envelope_subjects)
-
-# meg_envelope_beta2_orth = pd.DataFrame(
-#     [meg_envelopes[sub]['beta_high'].pop('corr_orth')[C_index]
-#      for sub in meg_envelope_subjects],
-#     index=meg_envelope_subjects)
-
-
-# meg_subjects = (meg_subjects.intersection(meg_extra['subject'])
-#                             .intersection(meg_peaks['subject']))
+meg_subjects = (meg_subjects.intersection(meg_extra.index)
+                            .intersection(meg_peaks.index))
 
 ##############################################################################
 # MRI features
 
-# df_pred, mae, r2, train_sizes, train_scores, test_scores =\
-#     run_meg_source_space(meg_data, subjects_data, cv=CV, fbands=FREQ_BANDS)
-# read features
 area_data = pd.read_hdf(STRUCTURAL_DATA, key='area')
 thickness_data = pd.read_hdf(STRUCTURAL_DATA, key='thickness')
 volume_data = pd.read_hdf(STRUCTURAL_DATA, key='volume')
@@ -160,90 +202,42 @@ volume_data = volume_data.dropna()
 # take only subjects that are both in MEG and Structural MRI
 structural_subjects = set(area_data.index)
 
-
 ##############################################################################
 # Bundle all data
 
-common_subjects = meg_subjects.intersection(structural_subjects)
+common_subjects = list(meg_subjects.intersection(structural_subjects))
+common_subjects.sort()
 
 area_data = area_data.loc[common_subjects]
 thickness_data = thickness_data.loc[common_subjects]
 volume_data = volume_data.loc[common_subjects]
-meg_data = meg_data.loc[common_subjects]
-meg_extra = meg_extra[meg_extra.subject.isin(common_subjects)]
-meg_peaks = meg_peaks[meg_peaks.subject.isin(common_subjects)]
+
+meg_extra = meg_extra.loc[common_subjects]
+meg_peaks = meg_peaks.loc[common_subjects]
 
 # read connectivity data
-connect_data_tangent_basc = pd.read_hdf(CONNECT_DATA_TAN, key='basc197')
-connect_data_r2z_basc = pd.read_hdf(CONNECT_DATA_CORR, key='basc197')
 connect_data_tangent_modl = pd.read_hdf(CONNECT_DATA_TAN, key='modl256')
-connect_data_r2z_modl = pd.read_hdf(CONNECT_DATA_CORR, key='modl256')
 
 # use only common subjects
-connect_data_tangent_basc = connect_data_tangent_basc.loc[common_subjects]
-connect_data_r2z_basc = connect_data_r2z_basc.loc[common_subjects]
 connect_data_tangent_modl = connect_data_tangent_modl.loc[common_subjects]
-connect_data_r2z_modl = connect_data_r2z_modl.loc[common_subjects]
 
 print('Data was read successfully.')
 
-
 data_ref = {
+    'MEG 1/f low': meg_extra[
+        [cc for cc in meg_extra.columns if '1f_low' in cc]],
+    'MEG 1/f gamma': meg_extra[
+        [cc for cc in meg_extra.columns if '1f_gamma' in cc]],
+    'MEG 1/f gamma': meg_extra[
+        [cc for cc in meg_extra.columns if '1f_gamma' in cc]],
     'Cortical Surface Area': area_data,
     'Cortical Thickness': thickness_data,
     'Subcortical Volumes': volume_data,
-    # 'Connectivity Matrix, BASC 197 tan': connect_data_tangent_basc,
-    # 'Connectivity Matrix, BASC 197 r2z': connect_data_r2z_basc,
     'Connectivity Matrix, MODL 256 tan': connect_data_tangent_modl,
-    # 'Connectivity Matrix, MODL 256 r2z': connect_data_r2z_modl,
-    'MEG': meg_data,
-    'MEG alpha cov': meg_envelope_alpha_cov,
-    'MEG alpha corr': meg_envelope_alpha_corr,
-    'MEG alpha orth': meg_envelope_alpha_orth,
-    'MEG beta1 cov': meg_envelope_beta1_cov,
-    'MEG beta1 corr': meg_envelope_beta1_corr,
-    'MEG beta1 orth': meg_envelope_beta1_orth,
-    'MEG beta2 cov': meg_envelope_beta2_cov,
-    'MEG beta2 corr': meg_envelope_beta2_corr,
-    'MEG beta2 orth': meg_envelope_beta2_orth,
-    'MEG 1/f low': meg_extra.set_index("subject")[
-        [cc for cc in meg_extra.columns if '1f_low' in cc]],
-    'MEG 1/f gamma': meg_extra.set_index("subject")[
-        [cc for cc in meg_extra.columns if '1f_gamma' in cc]],
-    'MEG, Cortical Surface Area Stacked-multimodal': [('area', area_data),
-                                                      ('meg', meg_data)],
-    'MEG, Cortical Thickness Stacked-multimodal': [('thickness',
-                                                    thickness_data),
-                                                   ('meg', meg_data)],
-    'MEG, Subcortical Volumes Stacked-multimodal': [('volume', volume_data),
-                                                    ('meg', meg_data)],
-    'MEG, BASC 197 tan Stacked-multimodal': [('basc',
-                                              connect_data_tangent_basc),
-                                             ('meg', meg_data)],
-    'MEG, MODL 256 r2z Stacked-multimodal': [('modl', connect_data_r2z_modl),
-                                             ('meg', meg_data)],
-    'MRI Stacked': [('area', area_data), ('thickness', thickness_data),
-                    ('volume', volume_data)],
-    'fMRI Stacked': [('basc', connect_data_tangent_basc),
-                     ('modl', connect_data_r2z_modl)],
-    'MRI, fMRI Stacked-multimodal': [('area', area_data),
-                                     ('thickness', thickness_data),
-                                     ('volume', volume_data),
-                                     ('basc',
-                                      connect_data_tangent_basc)],
-    'MEG, MRI Stacked-multimodal': [('area', area_data),
-                                    ('thickness', thickness_data),
-                                    ('volume', volume_data),
-                                    ('meg', meg_data)],
-    'MEG, fMRI Stacked-multimodal': [('basc', connect_data_tangent_basc),
-                                     ('meg', meg_data)],
-    'MEG, MRI, fMRI Stacked-multimodal': [('area', area_data),
-                                          ('thickness', thickness_data),
-                                          ('volume', volume_data),
-                                          ('basc', connect_data_tangent_basc),
-                                          ('meg', meg_data)]
 }
-
+for band in FREQ_BANDS:
+    for kind in meg_source_types:
+        data_ref[f"MEG {kind} {band}"] = dict(kind=kind, band=band)
 
 ##############################################################################
 # Prepare outputs
@@ -253,22 +247,14 @@ regression_mae = pd.DataFrame(columns=range(0, CV), dtype=float)
 regression_r2 = pd.DataFrame(columns=range(0, CV), dtype=float)
 learning_curves = {}
 
-
 ##############################################################################
 # Main analysis
 
 cv = KFold(n_splits=CV, shuffle=True, random_state=42)
 with threadpool_limits(limits=N_JOBS, user_api='blas'):
     for key, data in data_ref.items():
-        if 'Stack' in key:
-            continue
-            if False:
-                (df_pred, arr_mae, arr_r2, train_sizes, train_scores,
-                 test_scores) = run_stacking(
-                    data, subjects_data, cv=cv, n_jobs=N_JOBS)
-        else:
-            df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
-                run_ridge(data, subjects_data, cv=cv, n_jobs=N_JOBS)
+        df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
+            run_ridge(data, subjects_data, cv=cv, n_jobs=N_JOBS)
 
         arr_mae = -arr_mae
         mae = arr_mae.mean()
