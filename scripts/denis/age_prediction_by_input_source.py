@@ -30,7 +30,7 @@ MEG_PEAKS = './data/evoked_peaks.csv'
 
 # common subjects 574
 CV = 10
-N_JOBS = 2
+N_JOBS = 40
 memory = Memory(location=DRAGO_PATH)
 
 ##############################################################################
@@ -77,22 +77,27 @@ meg_source_types = (
 )
 
 def vec_to_sym(data, n_rows, skip_diag=True):
-    """Put vector back in matrix form""" 
+    """Put vector back in matrix form"""
     if skip_diag:
         k = 1
+        # This is usually true as we write explicitly
+        # the diag info in asecond step and we only
+        # store the upper triangle, hence all files
+        # have equal size.
     else:
         k = 0
     C = np.zeros((n_rows, n_rows), dtype=np.float64)
     C[np.triu_indices(n=n_rows, k=k)] = data
     C += C.T
-    C.flat[::n_rows + 1 ] = np.diag(C) / 2.
+    if not skip_diag:
+        C.flat[::n_rows + 1] = np.diag(C) / 2.
     return C
 
 def make_covs(diag, data, n_labels):
     if not np.isscalar(diag):
         assert np.all(diag.index == data.index)
     covs = np.empty(shape=(len(data), n_labels, n_labels))
-    for ii, (this_cross) in enumerate(data.values):
+    for ii, this_cross in enumerate(data.values):
         C = vec_to_sym(this_cross, n_labels)
         if np.isscalar(diag):
             this_diag = diag
@@ -129,7 +134,7 @@ def read_meg_rest_data(kind, band, n_labels=448):
         # undp log10
         diag = diag.transform(lambda x: 10 ** x)
         index = diag.index.copy()
-
+    
         data = pd.read_hdf(
             op.join(DRAGO_PATH, f'mne_source_power_cross-{band}.h5'),
             key=kind)
@@ -253,6 +258,9 @@ learning_curves = {}
 cv = KFold(n_splits=CV, shuffle=True, random_state=42)
 with threadpool_limits(limits=N_JOBS, user_api='blas'):
     for key, data in data_ref.items():
+        if isinstance(data, dict):
+            data = read_meg_rest_data(**data)
+
         df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
             run_ridge(data, subjects_data, cv=cv, n_jobs=N_JOBS)
 
