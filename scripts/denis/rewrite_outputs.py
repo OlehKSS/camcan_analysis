@@ -47,7 +47,7 @@ for band in FREQ_BANDS:
                   for sub in subjects]).reshape(len(subjects), -1),
         columns=columns_labels, index=subjects)
     power.to_hdf(
-        op.join(DRAGO_PATH, f'mne_source_power_diag-{band}.h5'), 
+        op.join(DRAGO_PATH, f'mne_source_power_diag-{band}.h5'),
         'mne_power_diag', mode='w')
 
     cross_power = pd.DataFrame(
@@ -99,8 +99,8 @@ for band in FREQ_BANDS:
 if False:
     df1 = pd.read_hdf(
         op.join(DRAGO_PATH, f'mne_envelopes_corr_low.h5'),
-                'mne_envelope_corr')
+        'mne_envelope_corr')
 
     df2 = pd.read_hdf(
         op.join(DRAGO_PATH, f'mne_envelopes_corr_alpha.h5'),
-                'mne_envelope_corr')
+        'mne_envelope_corr')

@@ -244,6 +244,16 @@ for band in FREQ_BANDS:
     for kind in meg_source_types:
         data_ref[f"MEG {kind} {band}"] = dict(kind=kind, band=band)
 
+for kind in ('mne_power_diag', 'mne_envelope_diag'):
+    this_data = list()
+    for band in FREQ_BANDS:
+        band_data = read_meg_rest_data(kind=kind, band=band)
+        band_data.columns = [cc + f'_{band}' for cc in band_data.columns]
+        this_data.append(band_data)
+    this_data = pd.concat(this_data, axis=1)
+    key = f'MEG {"power" if "power" in kind else "envelope"} diag'
+    data_ref[key] = this_data
+
 ##############################################################################
 # Prepare outputs
 
