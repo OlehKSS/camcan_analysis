@@ -7,9 +7,7 @@ import pandas as pd
 from sklearn.model_selection import KFold
 from joblib import Memory
 
-from mne.externals import h5io
-
-from camcan.utils import (run_stacking, run_ridge)
+from camcan.utils import run_ridge
 from threadpoolctl import threadpool_limits
 from camcan.processing import map_tangent
 
@@ -76,6 +74,7 @@ meg_source_types = (
 
 )
 
+
 def vec_to_sym(data, n_rows, skip_diag=True):
     """Put vector back in matrix form"""
     if skip_diag:
@@ -93,6 +92,7 @@ def vec_to_sym(data, n_rows, skip_diag=True):
         C.flat[::n_rows + 1] = np.diag(C) / 2.
     return C
 
+
 def make_covs(diag, data, n_labels):
     if not np.isscalar(diag):
         assert np.all(diag.index == data.index)
@@ -107,10 +107,11 @@ def make_covs(diag, data, n_labels):
         covs[ii] = C
     return covs
 
+
 @memory.cache
 def read_meg_rest_data(kind, band, n_labels=448):
     """Read the resting state data (600 subjects)
-    
+
     Read connectivity outptus and do some additional
     preprocessing.
 
@@ -134,7 +135,7 @@ def read_meg_rest_data(kind, band, n_labels=448):
         # undp log10
         diag = diag.transform(lambda x: 10 ** x)
         index = diag.index.copy()
-    
+
         data = pd.read_hdf(
             op.join(DRAGO_PATH, f'mne_source_power_cross-{band}.h5'),
             key=kind)
@@ -180,6 +181,7 @@ def read_meg_rest_data(kind, band, n_labels=448):
         # https://en.wikipedia.org/wiki/Fisher_transformation
         data = data.transform(np.arctanh)
     return data
+
 
 meg_power_alpha = read_meg_rest_data(
     kind='mne_power_diag', band='alpha')
@@ -231,8 +233,6 @@ print('Data was read successfully.')
 data_ref = {
     'MEG 1/f low': meg_extra[
         [cc for cc in meg_extra.columns if '1f_low' in cc]],
-    'MEG 1/f gamma': meg_extra[
-        [cc for cc in meg_extra.columns if '1f_gamma' in cc]],
     'MEG 1/f gamma': meg_extra[
         [cc for cc in meg_extra.columns if '1f_gamma' in cc]],
     'Cortical Surface Area': area_data,

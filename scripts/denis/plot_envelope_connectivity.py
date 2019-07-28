@@ -10,7 +10,7 @@ def make_mat(corr):
     C = np.zeros((448, 448), dtype=np.float64)
     C[np.triu_indices(len(C))] = corr
     C += C.T
-    C.flat[::448 + 1 ] = np.diag(C) / 2.
+    C.flat[::448 + 1] = np.diag(C) / 2.
     return C
 
 #%%

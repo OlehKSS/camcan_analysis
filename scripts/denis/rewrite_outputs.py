@@ -22,11 +22,11 @@ meg_source_power = h5io.read_hdf5(
 
 subjects = list(meg_source_power)
 
+c_index = np.eye(n_labels, dtype=np.bool)
+c_index = np.invert(c_index[np.triu_indices(n_labels)])
 columns_labels = [f'{ii}' for ii in range(n_labels)]
 columns_tiu = [f'{ii}' for ii in range(c_index.sum())]
 
-c_index = np.eye(n_labels, dtype=np.bool)
-c_index = np.invert(c_index[np.triu_indices(n_labels)])
 
 def make_mat(data, n_rows=448, skip_diag=True):
     if skip_diag:
@@ -36,8 +36,9 @@ def make_mat(data, n_rows=448, skip_diag=True):
     C = np.zeros((n_rows, n_rows), dtype=np.float64)
     C[np.triu_indices(n=n_rows, k=k)] = data
     C += C.T
-    C.flat[::n_rows + 1 ] = np.diag(C) / 2.
+    C.flat[::n_rows + 1] = np.diag(C) / 2.
     return C
+
 
 for band in FREQ_BANDS:
 
