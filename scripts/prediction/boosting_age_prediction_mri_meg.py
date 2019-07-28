@@ -5,11 +5,8 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import RidgeCV
 from sklearn.ensemble import AdaBoostRegressor
-from sklearn.model_selection import (cross_val_score,
-                                        cross_val_predict,
-                                        learning_curve,
-                                        ShuffleSplit, check_cv,
-                                        LeaveOneGroupOut)
+from sklearn.model_selection import (cross_val_score, check_cv,
+                                     LeaveOneGroupOut)
 from sklearn.ensemble import RandomForestRegressor
 
 alphas = np.logspace(-3, 5, 100)
