@@ -8,6 +8,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import RidgeCV
+from sklearn.metrics import r2_score, mean_absolute_error
 from sklearn.model_selection import (cross_val_score,
                                      cross_val_predict,
                                      learning_curve,
@@ -78,27 +79,51 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None,
         train_sizes = np.linspace(.1, 1.0, 5)
 
     # prepare data, subjects age
-    subjects = data.index.values
-    y = subjects_data.loc[subjects].age.values
-    X = data.values
+    subjects = data.index.values  # unioin index, can have Nan
+    y = subjects_data.loc[subjects]['age']
 
     reg = make_pipeline(StandardScaler(), RidgeCV(alphas))
 
     cv = check_cv(cv)
-    mae = cross_val_score(reg, X, y, scoring='neg_mean_absolute_error',
-                          cv=cv, n_jobs=n_jobs)
-    r2 = cross_val_score(reg, X, y, scoring='r2', cv=cv, n_jobs=n_jobs)
-    y_pred = cross_val_predict(reg, X, y, cv=cv, n_jobs=n_jobs)
+    index = data.index
+    mae = list()
+    r2 = list()
+    y_preds = list()
 
-    train_sizes, train_scores, test_scores = \
-        learning_curve(reg, X, y, cv=cv, train_sizes=train_sizes,
-                       scoring='neg_mean_absolute_error', n_jobs=n_jobs)
-
-    fold = _get_fold_indices(cv, X, y)
-    df_pred = pd.DataFrame(dict(y=y_pred, fold=fold), index=subjects,
+    df_pred = pd.DataFrame(columns=['fold', 'y_pred'], index=subjects,
                            dtype=float)
 
-    return df_pred, mae, r2, train_sizes, train_scores, test_scores
+    for ii, (train, test) in enumerate(cv.split(data.values)):
+        # we must mask on X as y has no nans
+        # Nans will bee rowwise only
+        train_mask = ~data.loc[index[train]].isna().values[:, 0]
+        test_mask = ~data.loc[index[test]].isna().values[:, 0]
+
+        X_train = data.loc[index[train]].values[train_mask]
+        X_test = data.loc[index[test]].values[test_mask]
+
+        y_train = y.loc[index[train]].values[train_mask]
+        y_test = y.loc[index[test]].values[test_mask]
+
+        reg.fit(X_train, y_train)
+        y_pred = reg.predict(X_test)
+
+        mae.append(-mean_absolute_error(y_true=y_test, y_pred=y_pred))
+        r2.append(r2_score(y_true=y_test, y_pred=y_pred))
+
+        # we need nans on the prediction
+        df_pred.loc[index[test[test_mask]], 'y_pred'] = y_pred
+        # but not on the fold index
+        df_pred.loc[index[test], 'fold'] = ii
+
+    mask = ~data.isna().values[:, 0]
+    train_sizes, train_scores, test_scores = \
+        learning_curve(reg, data[mask].values, y[mask].values, cv=cv,
+                       train_sizes=train_sizes,
+                       scoring='neg_mean_absolute_error', n_jobs=n_jobs)
+  
+    return (df_pred, np.array(mae), np.array(r2), train_sizes, train_scores,
+            test_scores)
 
 
 def run_meg_spoc(data, subjects_data, cv=10, alphas=None,

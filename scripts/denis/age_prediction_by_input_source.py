@@ -32,16 +32,6 @@ N_JOBS = 40
 memory = Memory(location=DRAGO_PATH)
 
 ##############################################################################
-# Subject info
-
-# read information about subjects
-subjects_data = pd.read_csv('./data/participant_data.csv', index_col=0)
-# for storing predictors data
-subjects_predictions = pd.DataFrame(subjects_data.age,
-                                    index=subjects_data.index,
-                                    dtype=float)
-
-##############################################################################
 # MEG features
 #
 # 1. Marginal Power
@@ -186,14 +176,12 @@ def read_meg_rest_data(kind, band, n_labels=448):
 meg_power_alpha = read_meg_rest_data(
     kind='mne_power_diag', band='alpha')
 
-meg_subjects = set(meg_power_alpha.index)
+meg_power_subjects = set(meg_power_alpha.index)
+# source level subjects all the same for resting state
 
 meg_extra = pd.read_hdf(MEG_EXTRA_DATA, key='MEG_rest_extra')
 
 meg_peaks = pd.read_csv(MEG_PEAKS).set_index('subject')
-
-meg_subjects = (meg_subjects.intersection(meg_extra.index)
-                            .intersection(meg_peaks.index))
 
 ##############################################################################
 # MRI features
@@ -208,26 +196,52 @@ volume_data = volume_data.dropna()
 
 # take only subjects that are both in MEG and Structural MRI
 structural_subjects = set(area_data.index)
+# read connectivity data
+
+connect_data_tangent_modl = pd.read_hdf(CONNECT_DATA_TAN, key='modl256')
+fmri_subjects = set(connect_data_tangent_modl.index)
 
 ##############################################################################
 # Bundle all data
 
-common_subjects = list(meg_subjects.intersection(structural_subjects))
+meg_common_subjects = (meg_power_subjects.intersection(meg_extra.index)
+                                         .intersection(meg_peaks.index))
+
+meg_union_subjects = (meg_power_subjects.union(meg_extra.index)
+                                        .union(meg_peaks.index))
+
+union_subjects = (meg_union_subjects.union(structural_subjects)
+                                    .union(fmri_subjects))
+
+print(f"Got {len(meg_union_subjects)} (union) and "
+      f"{len(meg_common_subjects)} (intersection) MEG subject")
+
+common_subjects = list(meg_common_subjects.intersection(structural_subjects)
+                                          .intersection(fmri_subjects))
 common_subjects.sort()
 
-area_data = area_data.loc[common_subjects]
-thickness_data = thickness_data.loc[common_subjects]
-volume_data = volume_data.loc[common_subjects]
+union_subjects = list(meg_union_subjects.union(structural_subjects)
+                                        .union(fmri_subjects))
+union_subjects.sort()
 
-meg_extra = meg_extra.loc[common_subjects]
-meg_peaks = meg_peaks.loc[common_subjects]
+print(f"Got {len(union_subjects)} (union) and "
+      f"{len(common_subjects)} (intersection) subjects")
 
-# read connectivity data
-connect_data_tangent_modl = pd.read_hdf(CONNECT_DATA_TAN, key='modl256')
+REDUCE_TO_COMMON_SUBJECTS = False
+if REDUCE_TO_COMMON_SUBJECTS:
+    union_subjects = common_subjects[:]
 
-# use only common subjects
-connect_data_tangent_modl = connect_data_tangent_modl.loc[common_subjects]
+print(f"Using {len(union_subjects)} subjects")
+# read information about subjects
+subjects_data = pd.read_csv('./data/participant_data.csv', index_col=0)
+# for storing predictors data
 
+subjects_template = pd.DataFrame(index=union_subjects,
+                                 dtype=float)
+subjects_predictions = subjects_data.loc[subjects_template.index, ['age']]
+
+##############################################################################
+# Subset common subjects
 print('Data was read successfully.')
 
 data_ref = {
@@ -268,9 +282,12 @@ learning_curves = {}
 cv = KFold(n_splits=CV, shuffle=True, random_state=42)
 with threadpool_limits(limits=N_JOBS, user_api='blas'):
     for key, data in data_ref.items():
+        if key != 'Cortical Thickness':
+            continue
         if isinstance(data, dict):
-            data = read_meg_rest_data(**data).loc[common_subjects]
-
+            data = read_meg_rest_data(**data)
+        
+        data = subjects_template.join(data)
         df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
             run_ridge(data, subjects_data, cv=cv, n_jobs=N_JOBS)
 
@@ -281,7 +298,7 @@ with threadpool_limits(limits=N_JOBS, user_api='blas'):
 
         regression_mae.loc[key] = arr_mae
         regression_r2.loc[key] = arr_r2
-        subjects_predictions.loc[df_pred.index, key] = df_pred['y']
+        subjects_predictions.loc[df_pred.index, key] = df_pred['y_pred']
         subjects_predictions.loc[df_pred.index, 'fold_idx'] = df_pred['fold']
         learning_curves[key] = {
             'train_sizes': train_sizes,
@@ -289,11 +306,12 @@ with threadpool_limits(limits=N_JOBS, user_api='blas'):
             'test_scores': test_scores
         }
 
-# save results
+# # save results
 with open('./data/learning_curves_denis.pkl', 'wb') as handle:
     pickle.dump(learning_curves, handle, protocol=pickle.HIGHEST_PROTOCOL)
-# with open('filename.pickle', 'rb') as handle:
-#     b = pickle.load(handle)
+
+if REDUCE_TO_COMMON_SUBJECTS:
+    PANDAS_OUT_FILE = PANDAS_OUT_FILE.replace('exp_data', 'exp_data_na')
 
 subjects_predictions.to_hdf(PANDAS_OUT_FILE, key='predictions', complevel=9)
 regression_mae.to_hdf(PANDAS_OUT_FILE, key='regression', complevel=9)
