@@ -29,6 +29,8 @@ MEG_PEAKS = './data/evoked_peaks.csv'
 # common subjects 574
 CV = 10
 N_JOBS = 40
+REDUCE_TO_COMMON_SUBJECTS = False
+
 memory = Memory(location=DRAGO_PATH)
 
 ##############################################################################
@@ -227,7 +229,6 @@ union_subjects.sort()
 print(f"Got {len(union_subjects)} (union) and "
       f"{len(common_subjects)} (intersection) subjects")
 
-REDUCE_TO_COMMON_SUBJECTS = False
 if REDUCE_TO_COMMON_SUBJECTS:
     union_subjects = common_subjects[:]
 
