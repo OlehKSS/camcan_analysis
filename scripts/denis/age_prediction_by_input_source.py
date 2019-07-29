@@ -283,8 +283,6 @@ learning_curves = {}
 cv = KFold(n_splits=CV, shuffle=True, random_state=42)
 with threadpool_limits(limits=N_JOBS, user_api='blas'):
     for key, data in data_ref.items():
-        if key != 'Cortical Thickness':
-            continue
         if isinstance(data, dict):
             data = read_meg_rest_data(**data)
         
