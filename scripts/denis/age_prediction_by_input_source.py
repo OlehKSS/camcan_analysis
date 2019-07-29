@@ -309,7 +309,7 @@ with threadpool_limits(limits=N_JOBS, user_api='blas'):
 with open('./data/learning_curves_denis.pkl', 'wb') as handle:
     pickle.dump(learning_curves, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-if REDUCE_TO_COMMON_SUBJECTS:
+if not REDUCE_TO_COMMON_SUBJECTS:
     PANDAS_OUT_FILE = PANDAS_OUT_FILE.replace('exp_data', 'exp_data_na')
 
 subjects_predictions.to_hdf(PANDAS_OUT_FILE, key='predictions', complevel=9)
