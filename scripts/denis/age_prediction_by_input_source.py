@@ -291,18 +291,18 @@ def run_10_folds(data_ref, repeat, n_splits=10):
 
             regression_mae.loc[key] = arr_mae
             regression_r2.loc[key] = arr_r2
-            regression_r2['repeat'] = repeat
-            regression_mae['repeat'] = repeat
             subjects_predictions.loc[df_pred.index, key] = df_pred['y_pred']
             subjects_predictions.loc[
                 df_pred.index, 'fold_idx'] = df_pred['fold']
-            subjects_predictions['repeat'] = repeat
 
             learning_curves[key] = {
                 'train_sizes': train_sizes,
                 'train_scores': train_scores,
                 'test_scores': test_scores
             }
+    regression_r2['repeat'] = repeat
+    regression_mae['repeat'] = repeat
+    subjects_predictions['repeat'] = repeat
     return (regression_mae, regression_r2, subjects_predictions,
             learning_curves)
 
