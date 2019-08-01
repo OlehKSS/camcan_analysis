@@ -4,185 +4,146 @@ Two types of plots are done:
     - MAE versus the chronological age,
     - MAE of one modality versus MAE of another modality.
 """
+import os.path as op
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
 from sklearn.model_selection import (
     GridSearchCV, cross_val_score, LeaveOneGroupOut)
-import xgboost as xgb
 
-FIG_OUT_PATH = './data/figures/'
-PREDICTIONS = './data/age_prediction_exp_data_denis.h5'
-SCORES = './data/age_prediction_scores_denis.csv'
+PREDICTIONS = './data/age_prediction_exp_data_na_denis.h5'
 MEG_EXTRA_DATA = './data/meg_extra_data.h5'
 MEG_PEAKS = './data/evoked_peaks.csv'
 MEG_PEAKS2 = './data/evoked_peaks_task_audvis.csv'
+SCORES = './data/age_prediction_scores_{}.csv'
 
 data = pd.read_hdf(PREDICTIONS, key='predictions')
-data = data.dropna()
 
 # Add extra dfeatures
+meg_extra = pd.read_hdf(MEG_EXTRA_DATA, key='MEG_rest_extra')[['alpha_peak']]
+meg_peaks = pd.read_csv(MEG_PEAKS).set_index('subject')[['aud', 'vis']]
+meg_peaks2 = pd.read_csv(MEG_PEAKS2).set_index('subject')[['audvis']]
+meg_peaks.columns = ['MEG ' + cc for cc in meg_peaks.columns]
+meg_peaks2.columns = ['MEG ' + cc for cc in meg_peaks2.columns]
+meg_extra.columns = ['MEG ' + cc for cc in meg_extra.columns]
 
-subjects = set(data.index)
-meg_extra = pd.read_hdf(MEG_EXTRA_DATA, key='MEG_rest_extra')
-meg_extra = meg_extra.reset_index()
-meg_peaks = pd.read_csv(MEG_PEAKS)
-meg_peaks2 = pd.read_csv(MEG_PEAKS2)
+data = data.join(meg_extra).join(meg_peaks).join(meg_peaks2)
 
-meg_subjects = (subjects.intersection(meg_extra['subject'])
-                        .intersection(meg_peaks['subject'])
-                        .intersection(meg_peaks2['subject']))
+FREQ_BANDS = ('alpha',
+              'beta_high',
+              'beta_low',
+              'delta',
+              'gamma_high',
+              'gamma_lo',
+              'gamma_mid',
+              'low',
+              'theta')
 
-meg_extra = meg_extra.set_index('subject')
-meg_peaks = meg_peaks.set_index('subject')
-meg_peaks2 = meg_peaks2.set_index('subject')
+meg_source_types = (
+    'mne_power_diag',
+    'mne_power_cross',
+    'mne_envelope_diag',
+    'mne_envelope_cross',
+    'mne_envelope_corr',
+    'mne_envelope_corr_orth'
+)
 
-data = data.loc[list(meg_subjects)]
-meg_extra = meg_extra.loc[list(meg_subjects)]
-meg_peaks = meg_peaks.loc[list(meg_subjects)]
-meg_peaks2 = meg_peaks2.loc[list(meg_subjects)]
+all_connectivity = [f'MEG {tt} {fb}' for tt in meg_source_types
+                    if 'diag' not in tt for fb in FREQ_BANDS]
+power_by_freq = [f'MEG {tt} {fb}' for tt in meg_source_types
+                 if 'diag' in tt and 'power' in tt for fb in FREQ_BANDS]
+envelope_by_freq = [f'MEG {tt} {fb}' for tt in meg_source_types
+                    if 'diag' in tt and 'envelope' in tt for fb in FREQ_BANDS]
 
-assert np.all(meg_extra.index.values == data.index.values)
-assert np.all(meg_peaks.index.values == data.index.values)
-assert np.all(meg_peaks.index.values == meg_extra.index.values)
-assert np.all(meg_peaks2.index.values == meg_extra.index.values)
+envelope_cov = [f'MEG {tt} {fb}' for tt in meg_source_types
+                if 'cross' in tt and 'envelope' in tt for fb in FREQ_BANDS]
 
+power_cov = [f'MEG {tt} {fb}' for tt in meg_source_types
+             if 'cross' in tt and 'power' in tt for fb in FREQ_BANDS]
 
-data['MEG alpha peak'] = meg_extra['alpha_peak'].values
-data['MEG latency aud'] = meg_peaks['aud'].values
-data['MEG latency vis'] = meg_peaks['vis'].values
-data['MEG latency audvis'] = meg_peaks2['audvis'].values
+meg_high_level = [
+    'MEG power diag',
+    'MEG envelope diag',
+    'MEG alpha_peak',
+    'MEG 1/f low',
+    'MEG 1/f gamma',
+    'MEG aud',
+    'MEG vis',
+    'MEG audvis'
+]
 
 stacked_keys = {
-    'MEG all': [
-        'MEG',
-        'MEG 1/f low',
-        'MEG 1/f gamma',
-        'MEG alpha peak',
-        'MEG latency aud',
-        'MEG latency vis',
-        'MEG latency audvis',
-        'MEG alpha corr',
-        'MEG alpha orth',
-        'MEG beta1 corr',
-        'MEG beta1 orth',
-        'MEG beta2 corr',
-        'MEG beta2 orth'
-    ],
-    # 'full': [
-    #     'MEG',
-    #     'MEG 1/f low',
-    #     'MEG 1/f gamma',
-    #     'MEG alpha peak',
-    #     'MEG latency aud',
-    #     'MEG latency vis',
-    #     'Cortical Surface Area',
-    #     'Cortical Thickness',
-    #     'Subcortical Volumes',
-    #     'Connectivity Matrix, MODL 256 tan',
-    #     'MEG alpha corr',
-    #     'MEG alpha orth',
-    #     'MEG beta1 corr',
-    #     'MEG beta1 orth',
-    #     'MEG beta2 corr',
-    #     'MEG beta2 orth'
-    # ],
-
-    # 'MRI': [
-    #     'Cortical Surface Area',
-    #     'Cortical Thickness',
-    #     'Subcortical Volumes',
-    #     'Connectivity Matrix, MODL 256 tan',
-    # ],
-
-    # 'MEG, Cortical Surface Area Stacked-multimodal': ['Cortical Surface Area',
-    #                                                   'MEG'],
-    # 'MEG, Cortical Thickness Stacked-multimodal': ['Cortical Thickness', 'MEG'],
-    # 'MEG, Subcortical Volumes Stacked-multimodal': ['Subcortical Volumes', 'MEG'],
-    # 'MEG, BASC 197 tan Stacked-multimodal': ['Connectivity Matrix, BASC 197 tan',
-    #                                          'MEG'],
-    # 'MEG, MODL 256 r2z Stacked-multimodal': ['Connectivity Matrix, MODL 256 r2z',
-    #                                          'MEG'],
-    # 'MRI Stacked': ['Cortical Surface Area', 'Cortical Thickness',
-    #                 'Subcortical Volumes'],
-    # 'fMRI Stacked': ['Connectivity Matrix, BASC 197 tan',
-    #                  'Connectivity Matrix, MODL 256 r2z'],
-    # 'MRI, fMRI Stacked-multimodal': ['Cortical Surface Area',
-    #                                  'Cortical Thickness',
-    #                                  'Subcortical Volumes',
-    #                                  'Connectivity Matrix, BASC 197 tan'],
-    # 'MEG, MRI Stacked-multimodal': ['Cortical Surface Area',
-    #                                 'Cortical Thickness',
-    #                                 'Subcortical Volumes',
-    #                                 'MEG'],
-    # 'MEG, fMRI Stacked-multimodal': ['Connectivity Matrix, BASC 197 tan',
-    #                                  'MEG'],
-    # 'MEG, MRI, fMRI Stacked-multimodal': ['Cortical Surface Area',
-    #                                       'Cortical Thickness',
-    #                                       'Subcortical Volumes',
-    #                                       'Connectivity Matrix, BASC 197 tan',
-    #                                       'MEG']
+    'MEG power': ['MEG power diag'],
+    'MEG high-level': meg_high_level,
+    'MEG connectivity': all_connectivity,
+    'MEG high-level + connectivity': meg_high_level + all_connectivity,
+    'MEG high-level + cov': meg_high_level + envelope_cov + power_cov,
+    'MEG high-level + cov (no env)': [c for c in (meg_high_level + power_cov)
+                                      if 'envelope' not in c],
+    'MEG power by freq': power_by_freq, 
+    'MEG envelope by freq': envelope_by_freq,
+    'MEG power and envelope by freq': power_by_freq + envelope_by_freq,
+    'MEG handcrafted': meg_high_level[4:],
+    'MEG frequency-resloved': (meg_high_level[2:] + power_by_freq +
+                               envelope_by_freq),
+    'MEG frequency-resloved + connectivity': (meg_high_level[2:] + power_by_freq +
+                                              envelope_by_freq + envelope_cov),
+    'MEG all': ({cc for cc in data.columns
+                 if 'MEG' in cc} - set(power_by_freq)) - set(envelope_by_freq)
 }
 
-key_labels = {'Cortical Surface Area': 'Cortical Surface Area',
-              'Cortical Thickness': 'Cortical Thickness',
-              'Subcortical Volumes': 'Subcortical Volumes',
-              # 'Connectivity Matrix, BASC 197 tan': 'BASC 197 tan',
-              'Connectivity Matrix, MODL 256 tan': 'MODL 256 tan',
-              # 'Connectivity Matrix, MODL 256 r2z': 'MODL 256 r2z',
-              # 'Connectivity Matrix, BASC 197 r2z': 'BASC 197 r2z',
-              'MEG': 'MEG',
-              }
+MRI = ['Cortical Surface Area', 'Cortical Thickness', 'Subcortical Volumes',
+       'Connectivity Matrix, MODL 256 tan']
+stacked_keys['ALL'] = list(stacked_keys['MEG all']) + MRI
+stacked_keys['ALL no fMRI'] = list(stacked_keys['MEG all']) + MRI[:-1]
+stacked_keys['MRI'] = MRI[:-1]
+stacked_keys['ALL MRI'] = MRI
 
 
-def _get_mae(predictions, key):
+DROPNA = True
+
+
+def get_mae(predictions, key):
     scores = []
     for fold_idx, df in predictions.groupby('fold_idx'):
         scores.append(np.mean(np.abs(df[key] - df['age'])))
     return scores
 
 
-regression_scores = pd.DataFrame()
+def run_stacked(data, stacked_keys):
+    regression_scores = pd.DataFrame()
+    for key, sel in stacked_keys.items():
+        this_data = data[sel]
+        if DROPNA:
+            mask = this_data.dropna().index
+        else:
+            mask = Ellipsis
+        X = this_data.loc[mask].values
+        y = data['age'].loc[mask].values
+        fold_idx = data.loc[mask]['fold_idx'].values
 
-for key in key_labels:
-    regression_scores[key] = _get_mae(data, key)
+        unstacked_mae = [get_mae(data.loc[mask], s) for s in sel]
+        unstacked_mean = min(np.mean(x) for x in unstacked_mae)
+        unstacked_std = min(np.std(x) for x in unstacked_mae)
+        print(f'{key} | best unstacked MAE: {unstacked_mean} '
+              f'(+/- {unstacked_std}')
+        # redefine model
+        print('n =', len(X))
+        reg = RandomForestRegressor(n_estimators=2000,
+                                    max_depth=6,
+                                    max_features='auto',
+                                    random_state=42)
+        cv = LeaveOneGroupOut()
+        scores = -cross_val_score(reg,
+                                  X,
+                                  y, cv=cv,
+                                  groups=fold_idx,
+                                  scoring='neg_mean_absolute_error',
+                                  n_jobs=-1)
 
-# Do the stacking:
+        print(f'{key} | MAE : %s (+/- %s)' % (np.mean(scores), np.std(scores)))
+        regression_scores[key] = scores
+    return regression_scores
 
-y = data['age']
-fold_idx = data['fold_idx']
-# data = data.drop(['fold_idx', 'age'], axis=1)
-
-
-for key, val in stacked_keys.items():
-    X = data[val].values
-
-    reg = RandomForestRegressor(n_estimators=500, max_depth=5,
-                                random_state=42)
-    # reg = GradientBoostingRegressor(
-    #     n_estimators=500, learning_rate=0.1, random_state=42,
-    #     n_iter_no_change=100, subsample=0.5,
-    #     max_depth=4)
-
-    # xgb_model = xgb.XGBRegressor(
-    #     objective='reg:squarederror', subsample=0.8, random_state=42)
-    # reg = GridSearchCV(xgb_model,
-    #                    {'max_depth': [2, 3, 4, 5, 6, 7, 8],
-    #                     'n_estimators': [20, 50, 200, 500, 1000, 10000],
-    #                     'learning_rate': [0.5, 0.2, 0.1, 0.01, 0.001]},
-    #                    cv=5,
-    #                    verbose=1)
-
-    cv = LeaveOneGroupOut()
-
-    scores = -cross_val_score(reg,
-                              X,
-                              y, cv=cv, groups=fold_idx,
-                              scoring='neg_mean_absolute_error',
-                              n_jobs=-1)
-
-    print('MAE : %s (+/- %s)' % (np.mean(scores), np.std(scores)))
-    regression_scores[key] = scores
-
-
-regression_scores.to_csv(SCORES, index=False)
+regression_scores_meg = run_stacked(data, stacked_keys)
+regression_scores_meg.to_csv(SCORES.format('meg'), index=False)

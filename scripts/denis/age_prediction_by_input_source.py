@@ -5,7 +5,7 @@ import pickle
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import KFold
-from joblib import Memory
+from joblib import Memory, Parallel, delayed
 
 from camcan.utils import run_ridge
 from threadpoolctl import threadpool_limits
@@ -63,7 +63,6 @@ meg_source_types = (
     'mne_envelope_cross',
     'mne_envelope_corr',
     'mne_envelope_corr_orth'
-
 )
 
 
@@ -192,14 +191,7 @@ area_data = pd.read_hdf(STRUCTURAL_DATA, key='area')
 thickness_data = pd.read_hdf(STRUCTURAL_DATA, key='thickness')
 volume_data = pd.read_hdf(STRUCTURAL_DATA, key='volume')
 
-area_data = area_data.dropna()
-thickness_data = thickness_data.dropna()
-volume_data = volume_data.dropna()
-
-# take only subjects that are both in MEG and Structural MRI
-structural_subjects = set(area_data.index)
 # read connectivity data
-
 connect_data_tangent_modl = pd.read_hdf(CONNECT_DATA_TAN, key='modl256')
 fmri_subjects = set(connect_data_tangent_modl.index)
 
@@ -212,17 +204,19 @@ meg_common_subjects = (meg_power_subjects.intersection(meg_extra.index)
 meg_union_subjects = (meg_power_subjects.union(meg_extra.index)
                                         .union(meg_peaks.index))
 
-union_subjects = (meg_union_subjects.union(structural_subjects)
-                                    .union(fmri_subjects))
 
 print(f"Got {len(meg_union_subjects)} (union) and "
       f"{len(meg_common_subjects)} (intersection) MEG subject")
 
-common_subjects = list(meg_common_subjects.intersection(structural_subjects)
+common_subjects = list(meg_common_subjects.intersection(area_data.index)
+                                          .intersection(thickness_data.index)
+                                          .intersection(volume_data.index)
                                           .intersection(fmri_subjects))
 common_subjects.sort()
 
-union_subjects = list(meg_union_subjects.union(structural_subjects)
+union_subjects = list(meg_union_subjects.union(area_data.index)
+                                        .union(thickness_data.index)
+                                        .union(volume_data.index)
                                         .union(fmri_subjects))
 union_subjects.sort()
 
@@ -270,40 +264,54 @@ for kind in ('mne_power_diag', 'mne_envelope_diag'):
     data_ref[key] = this_data
 
 ##############################################################################
-# Prepare outputs
-
-# store mae, learning curves for summary plots
-regression_mae = pd.DataFrame(columns=range(0, CV), dtype=float)
-regression_r2 = pd.DataFrame(columns=range(0, CV), dtype=float)
-learning_curves = {}
-
-##############################################################################
 # Main analysis
 
-cv = KFold(n_splits=CV, shuffle=True, random_state=42)
-with threadpool_limits(limits=N_JOBS, user_api='blas'):
-    for key, data in data_ref.items():
-        if isinstance(data, dict):
-            data = read_meg_rest_data(**data)
-        
-        data = subjects_template.join(data)
-        df_pred, arr_mae, arr_r2, train_sizes, train_scores, test_scores =\
-            run_ridge(data, subjects_data, cv=cv, n_jobs=N_JOBS)
+def run_10_folds(subjects_data, repeat):
+    cv = KFold(n_splits=CV, random_state=repeat * 7)
+    # store mae, learning curves for summary plots
+    subjects_predictions = subjects_data.loc[subjects_template.index, ['age']]
+    regression_mae = pd.DataFrame(columns=range(0, CV), dtype=float)
+    regression_r2 = pd.DataFrame(columns=range(0, CV), dtype=float)
+    learning_curves = {}
+    with threadpool_limits(limits=4, user_api='blas'):
+        for key, data in data_ref.items():
+            if isinstance(data, dict):
+                data = read_meg_rest_data(**data)
 
-        arr_mae = -arr_mae
-        mae = arr_mae.mean()
-        std = arr_mae.std()
-        print('%s MAE: %.2f, STD %.2f' % (key, mae, std))
+            data = subjects_template.join(data)
+            (df_pred, arr_mae, arr_r2, train_sizes, train_scores,
+             test_scores) = run_ridge(data, subjects_data, cv=cv,
+                                      n_jobs=1)
 
-        regression_mae.loc[key] = arr_mae
-        regression_r2.loc[key] = arr_r2
-        subjects_predictions.loc[df_pred.index, key] = df_pred['y_pred']
-        subjects_predictions.loc[df_pred.index, 'fold_idx'] = df_pred['fold']
-        learning_curves[key] = {
-            'train_sizes': train_sizes,
-            'train_scores': train_scores,
-            'test_scores': test_scores
-        }
+            arr_mae = -arr_mae
+            mae = arr_mae.mean()
+            std = arr_mae.std()
+            print('%s MAE: %.2f, STD %.2f' % (key, mae, std))
+
+            regression_mae.loc[key] = arr_mae
+            regression_r2.loc[key] = arr_r2
+            regression_r2['repeat'] = repeat
+            regression_mae['repeat'] = repeat
+            subjects_predictions.loc[df_pred.index, key] = df_pred['y_pred']
+            subjects_predictions.loc[df_pred.index, 'fold_idx'] = df_pred['fold']
+            subjects_predictions['repeat'] = repeat
+
+            learning_curves[key] = {
+                'train_sizes': train_sizes,
+                'train_scores': train_scores,
+                'test_scores': test_scores
+            }
+    return (regression_mae, regression_r2, subjects_predictions,
+            learning_curves)
+
+
+out = Parallel(n_jobs=10)(delayed(run_10_folds)(subjects_data, seed)
+                          for seed in range(10))
+out = zip(*out)
+regression_mae = pd.concat(next(out), axis=0)
+regression_r2 = pd.concat(next(out), axis=0)
+subjects_predictions = pd.concat(next(out), axis=0)
+learning_curves = next(out)
 
 # # save results
 with open('./data/learning_curves_denis.pkl', 'wb') as handle:
