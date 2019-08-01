@@ -266,7 +266,7 @@ for kind in ('mne_power_diag', 'mne_envelope_diag'):
 # Main analysis
 
 
-def run_10_folds(subjects_data, repeat, n_splits=10):
+def run_10_folds(data_ref, repeat, n_splits=10):
     # make more or less arbitrary superstitious seed from repeat
     cv = KFold(n_splits=n_splits, random_state=repeat * 7)
     # store mae, learning curves for summary plots
@@ -307,7 +307,7 @@ def run_10_folds(subjects_data, repeat, n_splits=10):
             learning_curves)
 
 
-out = Parallel(n_jobs=10)(delayed(run_10_folds)(subjects_data, repeat)
+out = Parallel(n_jobs=10)(delayed(run_10_folds)(data_ref, repeat)
                           for repeat in range(10))
 out = zip(*out)
 regression_mae = pd.concat(next(out), axis=0)
