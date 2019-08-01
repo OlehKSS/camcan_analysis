@@ -27,7 +27,6 @@ MEG_PEAKS = './data/evoked_peaks.csv'
 # Control paramaters
 
 # common subjects 574
-CV = 10
 N_JOBS = 40
 REDUCE_TO_COMMON_SUBJECTS = False
 
@@ -266,8 +265,10 @@ for kind in ('mne_power_diag', 'mne_envelope_diag'):
 ##############################################################################
 # Main analysis
 
+
 def run_10_folds(subjects_data, repeat):
-    cv = KFold(n_splits=CV, random_state=repeat * 7)
+    # make more or less arbitrary superstitious seed from repeat
+    cv = KFold(n_splits=10, random_state=repeat * 7)
     # store mae, learning curves for summary plots
     subjects_predictions = subjects_data.loc[subjects_template.index, ['age']]
     regression_mae = pd.DataFrame(columns=range(0, CV), dtype=float)
@@ -293,7 +294,8 @@ def run_10_folds(subjects_data, repeat):
             regression_r2['repeat'] = repeat
             regression_mae['repeat'] = repeat
             subjects_predictions.loc[df_pred.index, key] = df_pred['y_pred']
-            subjects_predictions.loc[df_pred.index, 'fold_idx'] = df_pred['fold']
+            subjects_predictions.loc[
+                df_pred.index, 'fold_idx'] = df_pred['fold']
             subjects_predictions['repeat'] = repeat
 
             learning_curves[key] = {
@@ -305,8 +307,8 @@ def run_10_folds(subjects_data, repeat):
             learning_curves)
 
 
-out = Parallel(n_jobs=10)(delayed(run_10_folds)(subjects_data, seed)
-                          for seed in range(10))
+out = Parallel(n_jobs=10)(delayed(run_10_folds)(subjects_data, repeat)
+                          for repeat in range(10))
 out = zip(*out)
 regression_mae = pd.concat(next(out), axis=0)
 regression_r2 = pd.concat(next(out), axis=0)
