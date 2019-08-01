@@ -276,7 +276,7 @@ def run_10_folds(data_ref, repeat, n_splits=10):
     regression_mae = pd.DataFrame(columns=list(data_ref), dtype=float)
     regression_r2 = pd.DataFrame(columns=list(data_ref), dtype=float)
     learning_curves = {}
-    with threadpool_limits(limits=4, user_api='blas'):
+    with threadpool_limits(limits=2, user_api='blas'):
         for key, data in data_ref.items():
             if isinstance(data, dict):
                 data = read_meg_rest_data(**data)
@@ -309,7 +309,7 @@ def run_10_folds(data_ref, repeat, n_splits=10):
             learning_curves)
 
 
-out = Parallel(n_jobs=10)(delayed(run_10_folds)(data_ref, repeat)
+out = Parallel(n_jobs=40)(delayed(run_10_folds)(data_ref, repeat)
                           for repeat in range(N_REPEATS))
 out = zip(*out)
 regression_mae = pd.concat(next(out), axis=0)
