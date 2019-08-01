@@ -266,13 +266,13 @@ for kind in ('mne_power_diag', 'mne_envelope_diag'):
 # Main analysis
 
 
-def run_10_folds(subjects_data, repeat):
+def run_10_folds(subjects_data, repeat, n_splits=10):
     # make more or less arbitrary superstitious seed from repeat
-    cv = KFold(n_splits=10, random_state=repeat * 7)
+    cv = KFold(n_splits=n_splits, random_state=repeat * 7)
     # store mae, learning curves for summary plots
     subjects_predictions = subjects_data.loc[subjects_template.index, ['age']]
-    regression_mae = pd.DataFrame(columns=range(0, CV), dtype=float)
-    regression_r2 = pd.DataFrame(columns=range(0, CV), dtype=float)
+    regression_mae = pd.DataFrame(columns=range(0, n_splits), dtype=float)
+    regression_r2 = pd.DataFrame(columns=range(0, n_splits), dtype=float)
     learning_curves = {}
     with threadpool_limits(limits=4, user_api='blas'):
         for key, data in data_ref.items():
