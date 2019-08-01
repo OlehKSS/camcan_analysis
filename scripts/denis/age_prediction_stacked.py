@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
 from sklearn.model_selection import (
-    GridSearchCV, cross_val_score, LeaveOneGroupOut)
+    GridSearchCV, cross_val_score, LeaveOneGroupOut, ShuffleSplit)
 
 PREDICTIONS = './data/age_prediction_exp_data_na_denis.h5'
 MEG_EXTRA_DATA = './data/meg_extra_data.h5'
@@ -129,17 +129,22 @@ def run_stacked(data, stacked_keys):
               f'(+/- {unstacked_std}')
         # redefine model
         print('n =', len(X))
-        reg = RandomForestRegressor(n_estimators=2000,
-                                    max_depth=6,
-                                    max_features='auto',
-                                    random_state=42)
+        reg = GridSearchCV(
+            RandomForestRegressor(n_estimators=1000,
+                                  random_state=42),
+            param_grid={'max_features': (['log2', 'sqrt', None]),
+                        'max_depth': [4, 6, 8, None]},
+            scoring='neg_mean_absolute_error',
+            iid=False,
+            cv=5)
+
         cv = LeaveOneGroupOut()
         scores = -cross_val_score(reg,
                                   X,
                                   y, cv=cv,
                                   groups=fold_idx,
                                   scoring='neg_mean_absolute_error',
-                                  n_jobs=-1)
+                                  n_jobs=4)
 
         print(f'{key} | MAE : %s (+/- %s)' % (np.mean(scores), np.std(scores)))
         regression_scores[key] = scores

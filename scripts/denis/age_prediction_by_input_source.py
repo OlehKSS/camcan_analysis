@@ -16,7 +16,7 @@ from camcan.processing import map_tangent
 
 DRAGO_PATH = '/storage/inria/agramfor/camcan_derivatives'
 OLEH_PATH = '/storage/tompouce/okozynet/projects/camcan_analysis/data'
-PANDAS_OUT_FILE = './data/age_prediction_exp_data_denis.h5'
+PANDAS_OUT_FILE = './data/age_prediction_exp_data_denis_{}-rep.h5'
 STRUCTURAL_DATA = f'{OLEH_PATH}/structural/structural_data.h5'
 CONNECT_DATA_CORR = f'{OLEH_PATH}/connectivity/connect_data_correlation.h5'
 CONNECT_DATA_TAN = f'{OLEH_PATH}/connectivity/connect_data_tangent.h5'
@@ -27,6 +27,7 @@ MEG_PEAKS = './data/evoked_peaks.csv'
 # Control paramaters
 
 # common subjects 574
+N_REPEATS = 10
 N_JOBS = 40
 REDUCE_TO_COMMON_SUBJECTS = False
 
@@ -272,8 +273,8 @@ def run_10_folds(data_ref, repeat, n_splits=10):
                shuffle=True)
     # store mae, learning curves for summary plots
     subjects_predictions = subjects_data.loc[subjects_template.index, ['age']]
-    regression_mae = pd.DataFrame(columns=range(0, n_splits), dtype=float)
-    regression_r2 = pd.DataFrame(columns=range(0, n_splits), dtype=float)
+    regression_mae = pd.DataFrame(columns=list(data_ref), dtype=float)
+    regression_r2 = pd.DataFrame(columns=list(data_ref), dtype=float)
     learning_curves = {}
     with threadpool_limits(limits=4, user_api='blas'):
         for key, data in data_ref.items():
@@ -290,8 +291,8 @@ def run_10_folds(data_ref, repeat, n_splits=10):
             std = arr_mae.std()
             print('%s MAE: %.2f, STD %.2f' % (key, mae, std))
 
-            regression_mae.loc[key] = arr_mae
-            regression_r2.loc[key] = arr_r2
+            regression_mae[key] = arr_mae
+            regression_r2[key] = arr_r2
             subjects_predictions.loc[df_pred.index, key] = df_pred['y_pred']
             subjects_predictions.loc[
                 df_pred.index, 'fold_idx'] = df_pred['fold']
@@ -309,7 +310,7 @@ def run_10_folds(data_ref, repeat, n_splits=10):
 
 
 out = Parallel(n_jobs=10)(delayed(run_10_folds)(data_ref, repeat)
-                          for repeat in range(10))
+                          for repeat in range(N_REPEATS))
 out = zip(*out)
 regression_mae = pd.concat(next(out), axis=0)
 regression_r2 = pd.concat(next(out), axis=0)
@@ -317,7 +318,9 @@ subjects_predictions = pd.concat(next(out), axis=0)
 learning_curves = next(out)
 
 # # save results
-with open('./data/learning_curves_denis.pkl', 'wb') as handle:
+PANDAS_OUT_FILE = PANDAS_OUT_FILE.format(N_REPEATS)
+
+with open(f'./data/learning_curves_denis_{N_REPEATS}.pkl', 'wb') as handle:
     pickle.dump(learning_curves, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 if not REDUCE_TO_COMMON_SUBJECTS:
