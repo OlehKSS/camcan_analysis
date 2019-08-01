@@ -27,7 +27,7 @@ MEG_PEAKS = './data/evoked_peaks.csv'
 # Control paramaters
 
 # common subjects 574
-N_REPEATS = 10
+N_REPEATS = 100
 N_JOBS = 40
 REDUCE_TO_COMMON_SUBJECTS = False
 
