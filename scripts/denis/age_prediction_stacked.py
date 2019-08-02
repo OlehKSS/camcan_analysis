@@ -4,18 +4,19 @@ Two types of plots are done:
     - MAE versus the chronological age,
     - MAE of one modality versus MAE of another modality.
 """
-import os.path as op
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import (
-    GridSearchCV, cross_val_score, LeaveOneGroupOut, ShuffleSplit)
+    GridSearchCV, cross_val_score, LeaveOneGroupOut)
 
 PREDICTIONS = './data/age_prediction_exp_data_na_denis.h5'
 MEG_EXTRA_DATA = './data/meg_extra_data.h5'
 MEG_PEAKS = './data/evoked_peaks.csv'
 MEG_PEAKS2 = './data/evoked_peaks_task_audvis.csv'
 SCORES = './data/age_prediction_scores_{}.csv'
+
+DROPNA = False
 
 data = pd.read_hdf(PREDICTIONS, key='predictions')
 
@@ -86,7 +87,8 @@ stacked_keys = {
     'MEG handcrafted': meg_high_level[4:],
     'MEG frequency-resloved': (meg_high_level[2:] + power_by_freq +
                                envelope_by_freq),
-    'MEG frequency-resloved + connectivity': (meg_high_level[2:] + power_by_freq +
+    'MEG frequency-resloved + connectivity': (meg_high_level[2:] +
+                                              power_by_freq +
                                               envelope_by_freq + envelope_cov),
     'MEG all': ({cc for cc in data.columns
                  if 'MEG' in cc} - set(power_by_freq)) - set(envelope_by_freq)
@@ -98,9 +100,6 @@ stacked_keys['ALL'] = list(stacked_keys['MEG all']) + MRI
 stacked_keys['ALL no fMRI'] = list(stacked_keys['MEG all']) + MRI[:-1]
 stacked_keys['MRI'] = MRI[:-1]
 stacked_keys['ALL MRI'] = MRI
-
-
-DROPNA = True
 
 
 def get_mae(predictions, key):
@@ -117,10 +116,22 @@ def run_stacked(data, stacked_keys):
         if DROPNA:
             mask = this_data.dropna().index
         else:
-            mask = Ellipsis
+            mask = this_data.index
         X = this_data.loc[mask].values
         y = data['age'].loc[mask].values
         fold_idx = data.loc[mask]['fold_idx'].values
+
+        if not DROPNA:
+            # code missings to make the tress learn from it.
+            X_left = X.copy()
+            X_left[this_data.isna().values] = -1000
+            X_right = X.copy()
+            X_right[this_data.isna().values] = 1000
+            assert np.sum(np.isnan(X_left)) == 0
+            assert np.sum(np.isnan(X_right)) == 0
+            assert np.min(X_left) == -1000
+            assert np.max(X_right) == 1000
+            X = np.concatenate([X_left, X_right], axis=1)
 
         unstacked_mae = [get_mae(data.loc[mask], s) for s in sel]
         unstacked_mean = min(np.mean(x) for x in unstacked_mae)
@@ -150,5 +161,7 @@ def run_stacked(data, stacked_keys):
         regression_scores[key] = scores
     return regression_scores
 
+
 regression_scores_meg = run_stacked(data, stacked_keys)
-regression_scores_meg.to_csv(SCORES.format('meg'), index=False)
+regression_scores_meg.to_csv(
+    SCORES.format('meg' + '' if DROPNA else '_na_coded'), index=False)

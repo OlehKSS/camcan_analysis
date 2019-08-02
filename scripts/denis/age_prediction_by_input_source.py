@@ -27,8 +27,9 @@ MEG_PEAKS = './data/evoked_peaks.csv'
 # Control paramaters
 
 # common subjects 574
-N_REPEATS = 100
-N_JOBS = 40
+N_REPEATS = 10
+N_JOBS = 10
+N_THREADS = 6
 REDUCE_TO_COMMON_SUBJECTS = False
 
 memory = Memory(location=DRAGO_PATH)
@@ -276,7 +277,7 @@ def run_10_folds(data_ref, repeat, n_splits=10):
     regression_mae = pd.DataFrame(columns=list(data_ref), dtype=float)
     regression_r2 = pd.DataFrame(columns=list(data_ref), dtype=float)
     learning_curves = {}
-    with threadpool_limits(limits=2, user_api='blas'):
+    with threadpool_limits(limits=N_THREADS, user_api='blas'):
         for key, data in data_ref.items():
             if isinstance(data, dict):
                 data = read_meg_rest_data(**data)
