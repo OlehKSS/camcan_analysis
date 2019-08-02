@@ -7,8 +7,9 @@ Two types of plots are done:
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import (
-    GridSearchCV, cross_val_score, LeaveOneGroupOut)
+from sklearn.model_selection import (GridSearchCV, LeaveOneGroupOut)
+from sklearn.metrics import mean_absolute_error
+from joblib import Parallel, delayed
 
 PREDICTIONS = './data/age_prediction_exp_data_na_denis.h5'
 MEG_EXTRA_DATA = './data/meg_extra_data.h5'
@@ -16,7 +17,7 @@ MEG_PEAKS = './data/evoked_peaks.csv'
 MEG_PEAKS2 = './data/evoked_peaks_task_audvis.csv'
 SCORES = './data/age_prediction_scores_{}.csv'
 
-DROPNA = False
+DROPNA = 'global'
 
 data = pd.read_hdf(PREDICTIONS, key='predictions')
 
@@ -81,7 +82,7 @@ stacked_keys = {
     'MEG high-level + cov': meg_high_level + envelope_cov + power_cov,
     'MEG high-level + cov (no env)': [c for c in (meg_high_level + power_cov)
                                       if 'envelope' not in c],
-    'MEG power by freq': power_by_freq, 
+    'MEG power by freq': power_by_freq,
     'MEG envelope by freq': envelope_by_freq,
     'MEG power and envelope by freq': power_by_freq + envelope_by_freq,
     'MEG handcrafted': meg_high_level[4:],
@@ -109,19 +110,29 @@ def get_mae(predictions, key):
     return scores
 
 
+def fit_predict_score(estimator, X, y, train, test):
+    estimator.fit(X[train], y[train])
+    y_pred = estimator.predict(X[test])
+    score_mae = mean_absolute_error(y_true=y[test], y_pred=y_pred)
+    return (y_pred, score_mae)
+
+
 def run_stacked(data, stacked_keys):
     regression_scores = pd.DataFrame()
+    out_predictions = data.copy()
     for key, sel in stacked_keys.items():
         this_data = data[sel]
-        if DROPNA:
+        if DROPNA == 'local':
             mask = this_data.dropna().index
+        elif DROPNA == 'global':
+            mask = data.dropna().index
         else:
             mask = this_data.index
         X = this_data.loc[mask].values
         y = data['age'].loc[mask].values
         fold_idx = data.loc[mask]['fold_idx'].values
 
-        if not DROPNA:
+        if DROPNA is False:
             # code missings to make the tress learn from it.
             X_left = X.copy()
             X_left[this_data.isna().values] = -1000
@@ -133,30 +144,44 @@ def run_stacked(data, stacked_keys):
             assert np.max(X_right) == 1000
             X = np.concatenate([X_left, X_right], axis=1)
 
-        unstacked_mae = [get_mae(data.loc[mask], s) for s in sel]
-        unstacked_mean = min(np.mean(x) for x in unstacked_mae)
-        unstacked_std = min(np.std(x) for x in unstacked_mae)
+        for column in sel:
+            score = get_mae(data.loc[mask], column)
+            if column not in regression_scores:
+                regression_scores[column] = score
+            elif regression_scores[column].mean() < np.mean(score):
+                regression_scores[column] = score
+
+        unstacked = regression_scores[sel].values
+        idx = unstacked.mean(axis=0).argmin()
+        unstacked_mean = unstacked[:, idx].mean()
+        unstacked_std = unstacked[:, idx].std()
         print(f'{key} | best unstacked MAE: {unstacked_mean} '
               f'(+/- {unstacked_std}')
-        # redefine model
+
         print('n =', len(X))
+
+        param_grid = {'max_depth': [4, 6, 8, None]}
+        if X.shape[1] > 10:
+            param_grid['max_features'] = (['log2', 'sqrt', None])
+
         reg = GridSearchCV(
             RandomForestRegressor(n_estimators=1000,
                                   random_state=42),
-            param_grid={'max_features': (['log2', 'sqrt', None]),
-                        'max_depth': [4, 6, 8, None]},
+            param_grid=param_grid,
             scoring='neg_mean_absolute_error',
             iid=False,
             cv=5)
 
         cv = LeaveOneGroupOut()
-        scores = -cross_val_score(reg,
-                                  X,
-                                  y, cv=cv,
-                                  groups=fold_idx,
-                                  scoring='neg_mean_absolute_error',
-                                  n_jobs=4)
+        out_cv = Parallel(n_jobs=4)(delayed(fit_predict_score)(
+            estimator=reg, X=X, y=y, train=train, test=test)
+            for train, test in cv.split(X, y, fold_idx))
 
+        out_cv = zip(*out_cv)
+        predictions = np.concatenate(next(out_cv), axis=0)
+        scores = np.array(next(out_cv))
+        out_predictions[f'stacked_{key}'] = np.nan
+        out_predictions.loc[mask, f'stacked_{key}'] = predictions
         print(f'{key} | MAE : %s (+/- %s)' % (np.mean(scores), np.std(scores)))
         regression_scores[key] = scores
     return regression_scores
@@ -164,4 +189,5 @@ def run_stacked(data, stacked_keys):
 
 regression_scores_meg = run_stacked(data, stacked_keys)
 regression_scores_meg.to_csv(
-    SCORES.format('meg' + '' if DROPNA else '_na_coded'), index=False)
+    SCORES.format('meg' + DROPNA if DROPNA else '_na_coded'),
+    index=False)
