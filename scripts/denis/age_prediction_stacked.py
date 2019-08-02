@@ -17,15 +17,15 @@ N_JOBS = 10
 N_THREADS = 5
 DROPNA = 'global'
 
-PREDICTIONS = f'./data/age_prediction_exp_data_na_denis_{N_REPEATS}-rep.h5'
+IN_PREDICTIONS = f'./data/age_prediction_exp_data_na_denis_{N_REPEATS}-rep.h5'
 MEG_EXTRA_DATA = './data/meg_extra_data.h5'
 MEG_PEAKS = './data/evoked_peaks.csv'
 MEG_PEAKS2 = './data/evoked_peaks_task_audvis.csv'
 SCORES = './data/age_stacked_scores_{}.csv'
-PREDICTIONS = './data/age_stacked_predictions_{}.csv'
+OUT_PREDICTIONS = './data/age_stacked_predictions_{}.csv'
 
 
-data = pd.read_hdf(PREDICTIONS, key='predictions')
+data = pd.read_hdf(IN_PREDICTIONS, key='predictions')
 
 # Add extra dfeatures
 meg_extra = pd.read_hdf(MEG_EXTRA_DATA, key='MEG_rest_extra')[['alpha_peak']]
@@ -208,5 +208,5 @@ out_scores_meg.to_csv(
 
 out_predictions_meg = next(out)
 out_predictions_meg.to_csv(
-    PREDICTIONS.format('meg' + DROPNA if DROPNA else '_na_coded'),
+    OUT_PREDICTIONS.format('meg' + DROPNA if DROPNA else '_na_coded'),
     index=False)
