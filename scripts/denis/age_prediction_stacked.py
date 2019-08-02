@@ -117,7 +117,7 @@ def get_mae(predictions, key):
 
 
 def fit_predict_score(estimator, X, y, train, test):
-    with threadpool_limits(limits=1, user_api='blas'):
+    with threadpool_limits(limits=N_THREADS, user_api='blas'):
         estimator.fit(X[train], y[train])
         y_pred = estimator.predict(X[test])
         score_mae = mean_absolute_error(y_true=y[test], y_pred=y_pred)
