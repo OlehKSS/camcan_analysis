@@ -71,13 +71,13 @@ power_cov = [f'MEG {tt} {fb}' for tt in meg_source_types
              if 'cross' in tt and 'power' in tt for fb in FREQ_BANDS]
 
 stacked_keys = {
-    'MEG power and envelope by freq': power_by_freq + envelope_by_freq,
+    'MEG-power-envelope-by-freq': power_by_freq + envelope_by_freq,
     'connectivity': all_connectivity,
-    'MEG power + connectivity': (power_by_freq +
-                                 envelope_by_freq + all_connectivity),
-    'MEG all (no  diag)': ({cc for cc in data.columns if 'MEG' in cc} -
-                           set(power_by_freq) - set(envelope_by_freq)),
-    'MEG all': list(data.columns)
+    'MEG-power-connectivity': (power_by_freq +
+                               envelope_by_freq + all_connectivity),
+    'MEG-all-no-diag': ({cc for cc in data.columns if 'MEG' in cc} -
+                       set(power_by_freq) - set(envelope_by_freq)),
+    'MEG all': [cc for cc in  data.columns if 'MEG' in cc]
 }
 
 MRI = ['Cortical Surface Area', 'Cortical Thickness', 'Subcortical Volumes',
@@ -145,7 +145,7 @@ def run_importance(data, stacked_keys):
             results.append(importance_result)
         results = pd.concat(results, axis=0)
 
-        n_permuations = 100
+        n_permuations = 1000
         importance_result = pd.DataFrame(
             columns=sel,
             index=range(n_permuations))
@@ -176,4 +176,4 @@ data = data.query("repeat == 0")
 
 out = run_importance(data, stacked_keys)
 for key, val in out.items():
-    val.to_hdf(OUT_IMPORTANCE.format(key), key='importance')
+    val.to_hdf(OUT_IMPORTANCE.format(len(out)), key=key)
