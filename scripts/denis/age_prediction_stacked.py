@@ -10,8 +10,11 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import (GridSearchCV, LeaveOneGroupOut)
 from sklearn.metrics import mean_absolute_error
 from joblib import Parallel, delayed
+from threadpoolctl import threadpool_limits
 
 N_REPEATS = 10
+N_JOBS = 10
+N_THREADS = 5
 DROPNA = 'global'
 
 PREDICTIONS = f'./data/age_prediction_exp_data_na_denis_{N_REPEATS}-rep.h5'
@@ -114,9 +117,10 @@ def get_mae(predictions, key):
 
 
 def fit_predict_score(estimator, X, y, train, test):
-    estimator.fit(X[train], y[train])
-    y_pred = estimator.predict(X[test])
-    score_mae = mean_absolute_error(y_true=y[test], y_pred=y_pred)
+    with threadpool_limits(limits=1, user_api='blas'):
+        estimator.fit(X[train], y[train])
+        y_pred = estimator.predict(X[test])
+        score_mae = mean_absolute_error(y_true=y[test], y_pred=y_pred)
     return (y_pred, score_mae)
 
 
