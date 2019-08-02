@@ -169,10 +169,11 @@ DEBUG = False
 if DEBUG:
     N_JOBS = 1
     data = data.iloc[::6]
+    stacked_keys = {k: v for k, v in stacked_keys.items()
+                    if k == 'MEG power and envelope by freq'}
 
 data = data.query("repeat == 0")
 
-out = run_importance(data, {k: v for k, v in stacked_keys.items()
-                            if k == 'MEG power and envelope by freq'})
+out = run_importance(data, stacked_keys)
 for key, val in out.items():
     val.to_hdf(OUT_IMPORTANCE.format(key), key='importance')
