@@ -11,13 +11,16 @@ from sklearn.model_selection import (GridSearchCV, LeaveOneGroupOut)
 from sklearn.metrics import mean_absolute_error
 from joblib import Parallel, delayed
 
-PREDICTIONS = './data/age_prediction_exp_data_na_denis.h5'
+N_REPEATS = 10
+DROPNA = 'global'
+
+PREDICTIONS = f'./data/age_prediction_exp_data_na_denis_{N_REPEATS}-rep.h5'
 MEG_EXTRA_DATA = './data/meg_extra_data.h5'
 MEG_PEAKS = './data/evoked_peaks.csv'
 MEG_PEAKS2 = './data/evoked_peaks_task_audvis.csv'
-SCORES = './data/age_prediction_scores_{}.csv'
+SCORES = './data/age_stacked_scores_{}.csv'
+PREDICTIONS = './data/age_stacked_predictions_{}.csv'
 
-DROPNA = 'global'
 
 data = pd.read_hdf(PREDICTIONS, key='predictions')
 
@@ -117,8 +120,8 @@ def fit_predict_score(estimator, X, y, train, test):
     return (y_pred, score_mae)
 
 
-def run_stacked(data, stacked_keys):
-    regression_scores = pd.DataFrame()
+def run_stacked(data, stacked_keys, repeat_idx):
+    out_scores = pd.DataFrame()
     out_predictions = data.copy()
     for key, sel in stacked_keys.items():
         this_data = data[sel]
@@ -146,12 +149,12 @@ def run_stacked(data, stacked_keys):
 
         for column in sel:
             score = get_mae(data.loc[mask], column)
-            if column not in regression_scores:
-                regression_scores[column] = score
-            elif regression_scores[column].mean() < np.mean(score):
-                regression_scores[column] = score
+            if column not in out_scores:
+                out_scores[column] = score
+            elif out_scores[column].mean() < np.mean(score):
+                out_scores[column] = score
 
-        unstacked = regression_scores[sel].values
+        unstacked = out_scores[sel].values
         idx = unstacked.mean(axis=0).argmin()
         unstacked_mean = unstacked[:, idx].mean()
         unstacked_std = unstacked[:, idx].std()
@@ -173,7 +176,7 @@ def run_stacked(data, stacked_keys):
             cv=5)
 
         cv = LeaveOneGroupOut()
-        out_cv = Parallel(n_jobs=4)(delayed(fit_predict_score)(
+        out_cv = Parallel(n_jobs=1)(delayed(fit_predict_score)(
             estimator=reg, X=X, y=y, train=train, test=test)
             for train, test in cv.split(X, y, fold_idx))
 
@@ -183,11 +186,23 @@ def run_stacked(data, stacked_keys):
         out_predictions[f'stacked_{key}'] = np.nan
         out_predictions.loc[mask, f'stacked_{key}'] = predictions
         print(f'{key} | MAE : %s (+/- %s)' % (np.mean(scores), np.std(scores)))
-        regression_scores[key] = scores
-    return regression_scores
+        out_scores[key] = scores
+    out_scores['repeat_idx'] = repeat_idx
+    out_predictions['repeat_idx'] = repeat_idx
+    return out_scores, out_predictions
 
 
-regression_scores_meg = run_stacked(data, stacked_keys)
-regression_scores_meg.to_csv(
+out = Parallel(n_jobs=10)(delayed(run_stacked)(
+    data.query(f"repeat == {ii}"), stacked_keys, ii)
+    for ii in range(N_REPEATS))
+out = zip(*out)
+
+out_scores_meg = next(out)
+out_scores_meg.to_csv(
     SCORES.format('meg' + DROPNA if DROPNA else '_na_coded'),
+    index=False)
+
+out_predictions_meg = next(out)
+out_predictions_meg.to_csv(
+    PREDICTIONS.format('meg' + DROPNA if DROPNA else '_na_coded'),
     index=False)
