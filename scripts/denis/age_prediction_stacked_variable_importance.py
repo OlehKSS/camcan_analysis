@@ -76,7 +76,7 @@ stacked_keys = {
     'MEG-power-connectivity': (power_by_freq +
                                envelope_by_freq + all_connectivity),
     'MEG-all-no-diag': ({cc for cc in data.columns if 'MEG' in cc} -
-                        set('MEG envelope diag', 'MEG power diag')),
+                        {'MEG envelope diag', 'MEG power diag'}),
     'MEG all': [cc for cc in data.columns if 'MEG' in cc]
 }
 
