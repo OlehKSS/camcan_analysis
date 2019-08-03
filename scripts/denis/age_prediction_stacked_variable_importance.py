@@ -22,7 +22,7 @@ IN_PREDICTIONS = f'./data/age_prediction_exp_data_na_denis_{N_REPEATS}-rep.h5'
 MEG_EXTRA_DATA = './data/meg_extra_data.h5'
 MEG_PEAKS = './data/evoked_peaks.csv'
 MEG_PEAKS2 = './data/evoked_peaks_task_audvis.csv'
-OUT_IMPORTANCE = './data/age_stacked_importance_{}.csv'
+OUT_IMPORTANCE = './data/age_stacked_importance_{}.h5'
 
 
 data = pd.read_hdf(IN_PREDICTIONS, key='predictions')
@@ -76,8 +76,8 @@ stacked_keys = {
     'MEG-power-connectivity': (power_by_freq +
                                envelope_by_freq + all_connectivity),
     'MEG-all-no-diag': ({cc for cc in data.columns if 'MEG' in cc} -
-                       set(power_by_freq) - set(envelope_by_freq)),
-    'MEG all': [cc for cc in  data.columns if 'MEG' in cc]
+                        set('MEG envelope diag', 'MEG power diag')),
+    'MEG all': [cc for cc in data.columns if 'MEG' in cc]
 }
 
 MRI = ['Cortical Surface Area', 'Cortical Thickness', 'Subcortical Volumes',
