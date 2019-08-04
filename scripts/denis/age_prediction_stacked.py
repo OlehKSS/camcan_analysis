@@ -103,8 +103,8 @@ stacked_keys = {
     'MEG cross powers + correlation': envelope_cov + power_cov + meg_corr,
     'MEG powers + cross powers + correlation': (
         meg_powers + meg_cross_powers + meg_corr),
-    'MEG powers + cross powers + correlation + handcrafted': (
-        meg_powers + meg_cross_powers + meg_corr + meg_handcrafted),
+    # 'MEG powers + cross powers + correlation + handcrafted':
+    'MEG all': meg_powers + meg_cross_powers + meg_corr + meg_handcrafted,
 }
 
 MRI = ['Cortical Surface Area', 'Cortical Thickness', 'Subcortical Volumes',
