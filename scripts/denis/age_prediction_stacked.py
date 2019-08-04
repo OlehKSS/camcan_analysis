@@ -69,9 +69,7 @@ envelope_cov = [f'MEG {tt} {fb}' for tt in meg_source_types
 power_cov = [f'MEG {tt} {fb}' for tt in meg_source_types
              if 'cross' in tt and 'power' in tt for fb in FREQ_BANDS]
 
-meg_high_level = [
-    'MEG power diag',
-    'MEG envelope diag',
+meg_handcrafted = [
     'MEG alpha_peak',
     'MEG 1/f low',
     'MEG 1/f gamma',
@@ -80,25 +78,33 @@ meg_high_level = [
     'MEG audvis'
 ]
 
+meg_cat_powers = [
+    'MEG power diag',
+    'MEG envelope diag'
+]
+
+meg_powers = meg_cat_powers + power_by_freq + envelope_by_freq
+
+meg_cross_powers = power_cov + envelope_cov
+
+meg_corr = [f'MEG {tt} {fb}' for tt in meg_source_types
+            if 'corr' in tt for fb in FREQ_BANDS]
+
 stacked_keys = {
-    'MEG power': ['MEG power diag'],
-    'MEG high-level': meg_high_level,
-    'MEG connectivity': all_connectivity,
-    'MEG high-level + connectivity': meg_high_level + all_connectivity,
-    'MEG high-level + cov': meg_high_level + envelope_cov + power_cov,
-    'MEG high-level + cov (no env)': [c for c in (meg_high_level + power_cov)
-                                      if 'envelope' not in c],
-    'MEG power by freq': power_by_freq,
-    'MEG envelope by freq': envelope_by_freq,
-    'MEG power and envelope by freq': power_by_freq + envelope_by_freq,
-    'MEG handcrafted': meg_high_level[4:],
-    'MEG frequency-resloved': (meg_high_level[2:] + power_by_freq +
-                               envelope_by_freq),
-    'MEG frequency-resloved + connectivity': (meg_high_level[2:] +
-                                              power_by_freq +
-                                              envelope_by_freq + envelope_cov),
-    'MEG all': ({cc for cc in data.columns
-                 if 'MEG' in cc} - set(power_by_freq)) - set(envelope_by_freq)
+    'MEG handcrafted': meg_handcrafted,
+    'MEG powers': meg_powers,
+    'MEG powers + cross powers': meg_powers + meg_cross_powers,
+    'MEG powers + cross powers + handrafted': (
+        meg_powers + meg_cross_powers + meg_handcrafted),
+    'MEG cat powers + cross powers + correlation': (
+        meg_cat_powers + meg_cross_powers + meg_corr),
+    'MEG cat powers + cross powers + correlation + handcrafted': (
+        meg_cat_powers + meg_cross_powers + meg_corr + meg_handcrafted),
+    'MEG cross powers + correlation': envelope_cov + power_cov + meg_corr,
+    'MEG powers + cross powers + correlation': (
+        meg_powers + meg_cross_powers + meg_corr),
+    'MEG powers + cross powers + correlation + handcrafted': (
+        meg_powers + meg_cross_powers + meg_corr + meg_handcrafted),
 }
 
 MRI = ['Cortical Surface Area', 'Cortical Thickness', 'Subcortical Volumes',
@@ -202,11 +208,13 @@ out = Parallel(n_jobs=10)(delayed(run_stacked)(
 out = zip(*out)
 
 out_scores_meg = next(out)
+out_scores_meg = pd.concat(out_scores_meg, axis=0)
 out_scores_meg.to_csv(
     SCORES.format('meg' + DROPNA if DROPNA else '_na_coded'),
     index=False)
 
 out_predictions_meg = next(out)
+out_predictions_meg = pd.concat(out_predictions_meg, axis=0)
 out_predictions_meg.to_csv(
     OUT_PREDICTIONS.format('meg' + DROPNA if DROPNA else '_na_coded'),
     index=False)
