@@ -13,7 +13,7 @@ from sklearn.inspection import partial_dependence
 from threadpoolctl import threadpool_limits
 from mne.externals import h5io
 
-N_JOBS = 1
+N_JOBS = 2
 N_THREADS = 40
 DROPNA = 'global'
 N_REPEATS = 10
@@ -149,7 +149,7 @@ def run_dependence(data, stacked_keys, dependence_map):
                 reg.fit(X, y)
                 # first we compute the 1d dependence for this configuration
                 pdp_output = {'1d': dict(), '2d': dict(),
-                            'mod_type': mod_type, 'stack_model': key}
+                              'mod_type': mod_type, 'stack_model': key}
                 for var_1d in dependence_map[key]['1d']:
                     print(var_1d)
                     # idea: bootstrap predictions by subsamping tress and
