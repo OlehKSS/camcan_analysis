@@ -13,8 +13,8 @@ from sklearn.inspection import partial_dependence
 from threadpoolctl import threadpool_limits
 from mne.externals import h5io
 
-N_JOBS = 2
-N_THREADS = 40
+N_JOBS = 40
+N_THREADS = 2
 DROPNA = 'global'
 N_REPEATS = 10
 IN_PREDICTIONS = f'./data/age_prediction_exp_data_na_denis_{N_REPEATS}-rep.h5'
