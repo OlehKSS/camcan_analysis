@@ -10,10 +10,11 @@ import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble import ExtraTreesRegressor
 from sklearn.inspection import partial_dependence
+from threadpoolctl import threadpool_limits
 from mne.externals import h5io
 
-N_JOBS = 40
-N_THREADS = 1
+N_JOBS = 1
+N_THREADS = 40
 DROPNA = 'global'
 N_REPEATS = 10
 IN_PREDICTIONS = f'./data/age_prediction_exp_data_na_denis_{N_REPEATS}-rep.h5'
@@ -143,33 +144,34 @@ def run_dependence(data, stacked_keys, dependence_map):
         ]
         # For each set of stacked modesl,
         # we fit the model variants we used for importance computing.
-        for mod_type, reg in regs:
-            reg.fit(X, y)
-            # first we compute the 1d dependence for this configuration
-            pdp_output = {'1d': dict(), '2d': dict(),
-                          'mod_type': mod_type, 'stack_model': key}
-            for var_1d in dependence_map[key]['1d']:
-                print(var_1d)
-                # idea: bootstrap predictions by subsamping tress and
-                # hacking fitted objects here the estimator list is
-                # overwritten with bootstraps.
-                pdp_output['1d'][var_1d] = partial_dependence(
-                    estimator=reg,
-                    X=X,
-                    percentiles=(0, 1),
-                    features=[this_data.columns.tolist().index(var_1d)])
-            for vars_2d in dependence_map[key]['2d']:
-                print(vars_2d)
-                # idea: bootstrap predictions by subsamping tress and
-                # hacking fitted objects here the estimator list is
-                # overwritten with bootstraps.
-                feat_idx = [this_data.columns.tolist().index(vv)
-                            for vv in vars_2d]
-                pdp_output['2d']['-'.join(vars_2d)] = partial_dependence(
-                    estimator=reg,
-                    X=X,
-                    # ci=(0, 1),
-                    features=[feat_idx])
+        with threadpool_limits(limits=N_THREADS, user_api='blas'):
+            for mod_type, reg in regs:
+                reg.fit(X, y)
+                # first we compute the 1d dependence for this configuration
+                pdp_output = {'1d': dict(), '2d': dict(),
+                            'mod_type': mod_type, 'stack_model': key}
+                for var_1d in dependence_map[key]['1d']:
+                    print(var_1d)
+                    # idea: bootstrap predictions by subsamping tress and
+                    # hacking fitted objects here the estimator list is
+                    # overwritten with bootstraps.
+                    pdp_output['1d'][var_1d] = partial_dependence(
+                        estimator=reg,
+                        X=X,
+                        percentiles=(0, 1),
+                        features=[this_data.columns.tolist().index(var_1d)])
+                for vars_2d in dependence_map[key]['2d']:
+                    print(vars_2d)
+                    # idea: bootstrap predictions by subsamping tress and
+                    # hacking fitted objects here the estimator list is
+                    # overwritten with bootstraps.
+                    feat_idx = [this_data.columns.tolist().index(vv)
+                                for vv in vars_2d]
+                    pdp_output['2d']['-'.join(vars_2d)] = partial_dependence(
+                        estimator=reg,
+                        X=X,
+                        # ci=(0, 1),
+                        features=[feat_idx])
 
 
             all_results.append(pdp_output)
