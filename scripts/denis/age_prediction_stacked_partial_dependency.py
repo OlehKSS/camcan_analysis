@@ -15,7 +15,7 @@ from mne.externals import h5io
 N_JOBS = 40
 N_THREADS = 1
 DROPNA = 'global'
-
+N_REPEATS = 10
 IN_PREDICTIONS = f'./data/age_prediction_exp_data_na_denis_{N_REPEATS}-rep.h5'
 MEG_EXTRA_DATA = './data/meg_extra_data.h5'
 MEG_PEAKS = './data/evoked_peaks.csv'
