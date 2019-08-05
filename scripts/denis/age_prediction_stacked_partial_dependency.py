@@ -156,7 +156,7 @@ def run_dependence(data, stacked_keys, dependence_map):
                 pdp_output['1d'][var_1d] = partial_dependence(
                     estimator=reg,
                     X=X,
-                    ci=(0, 1),
+                    percentiles=(0, 1),
                     features=[this_data.columns.tolist().index(var_1d)])
             for vars_2d in dependence_map[key]['2d']:
                 print(vars_2d)
