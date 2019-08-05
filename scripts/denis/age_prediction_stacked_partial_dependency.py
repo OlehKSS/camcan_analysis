@@ -153,7 +153,7 @@ def run_dependence(data, dependence_map, n_jobs):
                 out_2d = Parallel(n_jobs=n_jobs)(delayed(compute_pdp)(
                     reg=reg, X=X, columns=list(this_data.columns),
                     vars_2d=vv) for vv in dependence_map[key]['2d'])
-                labels = ['--'.join(k) for k  in dependence_map[key]['2d']]
+                labels = ['--'.join(k) for k in dependence_map[key]['2d']]
                 pdp_output['2d'] = dict(zip(labels, out_2d))
 
                 all_results.append(pdp_output)
@@ -164,7 +164,8 @@ DEBUG = False
 if DEBUG:
     N_JOBS = 1
     data = data.iloc[::10]
-    dependence_map = {k: v for k, v in dependence_map.items() if k == 'MEG all'}
+    dependence_map = {k: v for k, v in dependence_map.items()
+                      if k == 'MEG all'}
     dependence_map['MEG all']['1d'] = dependence_map['MEG all']['1d'][:2]
     dependence_map['MEG all']['2d'] = [
         tuple(dependence_map['MEG all']['1d'][:2])]
