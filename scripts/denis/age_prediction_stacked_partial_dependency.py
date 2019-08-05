@@ -12,9 +12,10 @@ from sklearn.ensemble import ExtraTreesRegressor
 from sklearn.inspection import partial_dependence
 from threadpoolctl import threadpool_limits
 from mne.externals import h5io
+from joblib import Parallel, delayed
 
-N_JOBS = 40
-N_THREADS = 2
+N_JOBS = 10
+N_THREADS = 5
 DROPNA = 'global'
 N_REPEATS = 10
 IN_PREDICTIONS = f'./data/age_prediction_exp_data_na_denis_{N_REPEATS}-rep.h5'
@@ -55,32 +56,9 @@ meg_source_types = (
     'mne_envelope_corr_orth'
 )
 
-all_connectivity = [f'MEG {tt} {fb}' for tt in meg_source_types
-                    if 'diag' not in tt for fb in FREQ_BANDS]
-
-power_by_freq = [f'MEG {tt} {fb}' for tt in meg_source_types
-                 if 'diag' in tt and 'power' in tt for fb in FREQ_BANDS]
-envelope_by_freq = [f'MEG {tt} {fb}' for tt in meg_source_types
-                    if 'diag' in tt and 'envelope' in tt for fb in FREQ_BANDS]
-
-envelope_cov = [f'MEG {tt} {fb}' for tt in meg_source_types
-                if 'cross' in tt and 'envelope' in tt for fb in FREQ_BANDS]
-
-power_cov = [f'MEG {tt} {fb}' for tt in meg_source_types
-             if 'cross' in tt and 'power' in tt for fb in FREQ_BANDS]
-
-stacked_keys = {
-    'MEG-all-no-diag': ({cc for cc in data.columns if 'MEG' in cc} -
-                        {'MEG envelope diag', 'MEG power diag'}),
-    'MEG all': [cc for cc in data.columns if 'MEG' in cc]
-}
-
-MRI = ['Cortical Surface Area', 'Cortical Thickness', 'Subcortical Volumes',
-       'Connectivity Matrix, MODL 256 tan']
-stacked_keys['ALL'] = list(stacked_keys['MEG all']) + MRI
-
 #  we put in here keys ordered by importance.
 dependence_map = {
+    # '1d' is the list of features for which we want PDPs.
     'MEG all': {'1d': ['MEG envelope diag',
                        'MEG power diag',
                        'MEG mne_envelope_cross alpha',
@@ -90,15 +68,27 @@ dependence_map = {
                        'MEG mne_envelope_cross theta',
                        'MEG mne_envelope_corr alpha',
                        'MEG mne_envelope_corr beta_low',
-                       'MEG mne_power_cross beta_high']}
+                       'MEG mne_power_cross beta_high'],
+                # keys are the columns used to fit the model.
+                'keys': [cc for cc in data.columns if 'MEG' in cc]}
 }
+# now we can make do combinations for 2D dependene.
 dependence_map['MEG all']['2d'] = list(
     combinations(dependence_map['MEG all']['1d'][:4], 2))
 
 
-def run_dependence(data, stacked_keys, dependence_map):
+def compute_pdp(reg, X, columns, vars_2d):
+    if isinstance(vars_2d, str):
+        vars_2d = [vars_2d]
+    feat_idx = [columns.index(vv) for vv in vars_2d]
+    return partial_dependence(estimator=reg, X=X,
+                              features=[feat_idx])
+
+
+def run_dependence(data, dependence_map, n_jobs):
     all_results = list()
-    for key, sel in stacked_keys.items():
+    for key in dependence_map:
+        sel = dependence_map[key]['keys']
         this_data = data[sel]
         if DROPNA == 'local':
             mask = this_data.dropna().index
@@ -140,53 +130,47 @@ def run_dependence(data, stacked_keys, dependence_map):
                                  max_features=1,
                                  max_depth=5,
                                  n_jobs=N_JOBS,
-                                 random_state=42)),
-        ]
-        # For each set of stacked modesl,
+                                 random_state=42))]
+        if DEBUG:
+            regs = regs[:1]
+            regs[0][1].n_estimators = 1
+        # For each set of stacked modsl,
         # we fit the model variants we used for importance computing.
         with threadpool_limits(limits=N_THREADS, user_api='blas'):
             for mod_type, reg in regs:
+                # idea: bootstrap predictions by subsamping tress and
+                # hacking fitted objects here the estimator list is
+                # overwritten with bootstraps.
                 reg.fit(X, y)
                 # first we compute the 1d dependence for this configuration
-                pdp_output = {'1d': dict(), '2d': dict(),
-                              'mod_type': mod_type, 'stack_model': key}
-                for var_1d in dependence_map[key]['1d']:
-                    print(var_1d)
-                    # idea: bootstrap predictions by subsamping tress and
-                    # hacking fitted objects here the estimator list is
-                    # overwritten with bootstraps.
-                    pdp_output['1d'][var_1d] = partial_dependence(
-                        estimator=reg,
-                        X=X,
-                        percentiles=(0, 1),
-                        features=[this_data.columns.tolist().index(var_1d)])
-                for vars_2d in dependence_map[key]['2d']:
-                    print(vars_2d)
-                    # idea: bootstrap predictions by subsamping tress and
-                    # hacking fitted objects here the estimator list is
-                    # overwritten with bootstraps.
-                    feat_idx = [this_data.columns.tolist().index(vv)
-                                for vv in vars_2d]
-                    pdp_output['2d']['-'.join(vars_2d)] = partial_dependence(
-                        estimator=reg,
-                        X=X,
-                        # ci=(0, 1),
-                        features=[feat_idx])
 
+                pdp_output = {'mod_type': mod_type, 'stack_model': key}
+                out_1d = Parallel(n_jobs=n_jobs)(delayed(compute_pdp)(
+                    reg=reg, X=X, columns=list(this_data.columns),
+                    vars_2d=vv) for vv in dependence_map[key]['1d'])
+                pdp_output['1d'] = dict(zip(dependence_map[key]['1d'], out_1d))
 
-            all_results.append(pdp_output)
+                out_2d = Parallel(n_jobs=n_jobs)(delayed(compute_pdp)(
+                    reg=reg, X=X, columns=list(this_data.columns),
+                    vars_2d=vv) for vv in dependence_map[key]['2d'])
+                labels = ['--'.join(k) for k  in dependence_map[key]['2d']]
+                pdp_output['2d'] = dict(zip(labels, out_2d))
 
+                all_results.append(pdp_output)
     return all_results
 
 
-DEBUG = True
+DEBUG = False
 if DEBUG:
     N_JOBS = 1
-    data = data.iloc[::6]
-    stacked_keys = {k: v for k, v in stacked_keys.items()
-                    if k == 'MEG all'}
+    data = data.iloc[::10]
+    dependence_map = {k: v for k, v in dependence_map.items() if k == 'MEG all'}
+    dependence_map['MEG all']['1d'] = dependence_map['MEG all']['1d'][:2]
+    dependence_map['MEG all']['2d'] = [
+        tuple(dependence_map['MEG all']['1d'][:2])]
 
-out = run_dependence(data, stacked_keys, dependence_map)
+out = run_dependence(
+    data.query('repeat == 0'), dependence_map, n_jobs=N_JOBS)
 
 h5io.write_hdf5(
     OUT_DEPENDENCE.format('model-full'),  out, compression=9,
