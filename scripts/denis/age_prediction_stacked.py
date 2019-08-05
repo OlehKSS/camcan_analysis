@@ -122,12 +122,16 @@ def get_mae(predictions, key):
     return scores
 
 
-def fit_predict_score(estimator, X, y, train, test):
+def fit_predict_score(estimator, X, y, train, test, test_index):
+    pred = pd.DataFrame(
+        columns=['prediction'], index=test_index)
     with threadpool_limits(limits=N_THREADS, user_api='blas'):
         estimator.fit(X[train], y[train])
         y_pred = estimator.predict(X[test])
         score_mae = mean_absolute_error(y_true=y[test], y_pred=y_pred)
-    return (y_pred, score_mae)
+        pred['prediction'] = y_pred
+        pred['y'] = y[test]
+    return pred, score_mae
 
 
 def run_stacked(data, stacked_keys, repeat_idx):
@@ -184,25 +188,41 @@ def run_stacked(data, stacked_keys, repeat_idx):
             scoring='neg_mean_absolute_error',
             iid=False,
             cv=5)
+        if DEBUG:
+            reg = RandomForestRegressor(n_estimators=1000,
+                                        max_features='log2',
+                                        max_depth=6,
+                                        random_state=42)
 
         cv = LeaveOneGroupOut()
         out_cv = Parallel(n_jobs=1)(delayed(fit_predict_score)(
-            estimator=reg, X=X, y=y, train=train, test=test)
+            estimator=reg, X=X, y=y, train=train, test=test,
+            test_index=this_data.loc[mask].index[test])
             for train, test in cv.split(X, y, fold_idx))
 
         out_cv = zip(*out_cv)
-        predictions = np.concatenate(next(out_cv), axis=0)
-        scores = np.array(next(out_cv))
+        predictions = next(out_cv)
         out_predictions[f'stacked_{key}'] = np.nan
-        out_predictions.loc[mask, f'stacked_{key}'] = predictions
-        print(f'{key} | MAE : %s (+/- %s)' % (np.mean(scores), np.std(scores)))
+        for pred in predictions:
+            assert np.all(out_predictions.loc[pred.index]['age'] == pred['y'])
+            out_predictions.loc[
+                pred.index, f'stacked_{key}'] = pred['prediction'].values
+        scores = np.array(next(out_cv))
+        print(f'{key} | MAE : %0.3f (+/- %0.3f)' % (
+            np.mean(scores), np.std(scores)))
+
         out_scores[key] = scores
     out_scores['repeat_idx'] = repeat_idx
     out_predictions['repeat_idx'] = repeat_idx
     return out_scores, out_predictions
 
 
-out = Parallel(n_jobs=10)(delayed(run_stacked)(
+DEBUG = False
+if DEBUG:
+    N_JOBS = 1
+    stacked_keys = {'MEG all': meg_powers + meg_cross_powers + meg_handcrafted}
+
+out = Parallel(n_jobs=N_JOBS)(delayed(run_stacked)(
     data.query(f"repeat == {ii}"), stacked_keys, ii)
     for ii in range(N_REPEATS))
 out = zip(*out)

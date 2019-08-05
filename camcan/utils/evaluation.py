@@ -88,7 +88,6 @@ def run_ridge(data, subjects_data, cv=10, alphas=None, train_sizes=None,
     index = data.index
     mae = list()
     r2 = list()
-    y_preds = list()
 
     df_pred = pd.DataFrame(columns=['fold', 'y_pred'], index=subjects,
                            dtype=float)
