@@ -112,6 +112,7 @@ MRI = ['Cortical Surface Area', 'Cortical Thickness', 'Subcortical Volumes',
 stacked_keys['ALL'] = list(stacked_keys['MEG all']) + MRI
 stacked_keys['ALL no fMRI'] = list(stacked_keys['MEG all']) + MRI[:-1]
 stacked_keys['MRI'] = MRI[:-1]
+stacked_keys['fMRI'] = MRI[-1:]
 stacked_keys['ALL MRI'] = MRI
 
 

@@ -45,8 +45,12 @@ if False:
 results_1d = list()
 for ii, mod in enumerate(dependence):
     for name, (pred, values) in mod['1d'].items():
-        results_1d.append(
-            pd.DataFrame({'marker': name, 'pred': pred[0], 'value': values[0]}))
+        df1d = pd.DataFrame({'marker': name,
+                             'model': mod['stack_model'],
+                             'model_type': mod['mod_type'],
+                             'pred': pred[0],
+                             'value': values[0]})
+        results_1d.append(df1d)
 
 results_1d = pd.concat(results_1d, axis=0)
 results_1d.to_csv(OUT_DEPENDENCE_1D)
@@ -57,6 +61,8 @@ results_12 = list()
 for ii, mod in enumerate(dependence):
     for name, (pred, values) in mod['2d'].items():
         df = pd.DataFrame({'marker': name,
+                           'model': mod['stack_model'],
+                           'model_type': mod['mod_type'],
                            'pred': pred.ravel(0)})
         value_grid = np.array([x.ravel() for x in np.meshgrid(*values)]).T
         name_a, name_b = name.split('--')
