@@ -15,7 +15,6 @@ from threadpoolctl import threadpool_limits
 N_REPEATS = 10
 N_JOBS = 10
 N_THREADS = 5
-DROPNA = 'global'
 
 IN_PREDICTIONS = f'./data/age_prediction_exp_data_na_denis_{N_REPEATS}-rep.h5'
 MEG_EXTRA_DATA = './data/meg_extra_data.h5'
@@ -135,14 +134,14 @@ def fit_predict_score(estimator, X, y, train, test, test_index):
     return pred, score_mae
 
 
-def run_stacked(data, stacked_keys, repeat_idx):
+def run_stacked(data, stacked_keys, repeat_idx, drop_na):
     out_scores = pd.DataFrame()
     out_predictions = data.copy()
     for key, sel in stacked_keys.items():
         this_data = data[sel]
-        if DROPNA == 'local':
+        if drop_na == 'local':
             mask = this_data.dropna().index
-        elif DROPNA == 'global':
+        elif drop_na == 'global':
             mask = data.dropna().index
         else:
             mask = this_data.index
@@ -150,7 +149,7 @@ def run_stacked(data, stacked_keys, repeat_idx):
         y = data['age'].loc[mask].values
         fold_idx = data.loc[mask]['fold_idx'].values
 
-        if DROPNA is False:
+        if drop_na is False:
             # code missings to make the tress learn from it.
             X_left = X.copy()
             X_left[this_data.isna().values] = -1000
@@ -223,19 +222,20 @@ if DEBUG:
     N_JOBS = 1
     stacked_keys = {'MEG all': meg_powers + meg_cross_powers + meg_handcrafted}
 
-out = Parallel(n_jobs=N_JOBS)(delayed(run_stacked)(
-    data.query(f"repeat == {ii}"), stacked_keys, ii)
-    for ii in range(N_REPEATS))
-out = zip(*out)
+for drop_na in (False, 'global')[:1 if DEBUG else 2]:
+    out = Parallel(n_jobs=N_JOBS)(delayed(run_stacked)(
+        data.query(f"repeat == {ii}"), stacked_keys, ii, drop_na)
+        for ii in range(N_REPEATS))
+    out = zip(*out)
 
-out_scores_meg = next(out)
-out_scores_meg = pd.concat(out_scores_meg, axis=0)
-out_scores_meg.to_csv(
-    SCORES.format('meg' + DROPNA if DROPNA else '_na_coded'),
-    index=False)
+    out_scores_meg = next(out)
+    out_scores_meg = pd.concat(out_scores_meg, axis=0)
+    out_scores_meg.to_csv(
+        SCORES.format('meg' + drop_na if drop_na else '_na_coded'),
+        index=False)
 
-out_predictions_meg = next(out)
-out_predictions_meg = pd.concat(out_predictions_meg, axis=0)
-out_predictions_meg.to_csv(
-    OUT_PREDICTIONS.format('meg' + DROPNA if DROPNA else '_na_coded'),
-    index=False)
+    out_predictions_meg = next(out)
+    out_predictions_meg = pd.concat(out_predictions_meg, axis=0)
+    out_predictions_meg.to_csv(
+        OUT_PREDICTIONS.format('meg' + drop_na if drop_na else '_na_coded'),
+        index=False)

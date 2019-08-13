@@ -37,24 +37,8 @@ meg_extra.columns = ['MEG ' + cc for cc in meg_extra.columns]
 
 data = data.join(meg_extra).join(meg_peaks).join(meg_peaks2)
 
-FREQ_BANDS = ('alpha',
-              'beta_high',
-              'beta_low',
-              'delta',
-              'gamma_high',
-              'gamma_lo',
-              'gamma_mid',
-              'low',
-              'theta')
-
-meg_source_types = (
-    'mne_power_diag',
-    'mne_power_cross',
-    'mne_envelope_diag',
-    'mne_envelope_cross',
-    'mne_envelope_corr',
-    'mne_envelope_corr_orth'
-)
+aMRI = ['Cortical Surface Area', 'Cortical Thickness', 'Subcortical Volumes']
+MRI = aMRI + ['Connectivity Matrix, MODL 256 tan']
 
 #  we put in here keys ordered by importance.
 dependence_map = {
@@ -70,9 +54,50 @@ dependence_map = {
                        'MEG mne_envelope_corr beta_low',
                        'MEG mne_power_cross beta_high'],
                 # keys are the columns used to fit the model.
-                'keys': [cc for cc in data.columns if 'MEG' in cc]}
+                "keys": [cc for cc in data.columns if 'MEG' in cc]},
+    "ALL no fMRI": {'1d': ['Cortical Surface Area',
+                           'Cortical Thickness',
+                           'Subcortical Volumes',
+                           'MEG power diag',
+                           'MEG envelope diag',
+                           'MEG mne_envelope_cross alpha',
+                           'MEG mne_envelope_cross beta_low',
+                           'MEG mne_power_diag beta_low',
+                           'MEG mne_envelope_diag beta_low',
+                           'MEG mne_envelope_cross theta',
+                           'MEG mne_envelope_corr alpha'],
+                    "2d": list(
+                        combinations(
+                           ['Cortical Surface Area',
+                            'Cortical Thickness',
+                            'Subcortical Volumes',
+                            'MEG power diag'], 2)),
+                  # keys are the columns used to fit the model.
+                  "keys": [cc for cc in data.columns if 'MEG' in cc] + aMRI},
+    'ALL MRI': {"1d": MRI,
+                "2d": list(combinations(MRI, 2)),
+                "keys": MRI},
+    'ALL': {"1d": ['Cortical Surface Area',
+                   'Cortical Thickness',
+                   'Subcortical Volumes',
+                   'Connectivity Matrix, MODL 256 tan',
+                   'MEG power diag',
+                   'MEG envelope diag',
+                   'MEG mne_envelope_cross alpha',
+                   'MEG mne_envelope_cross beta_low',
+                   'MEG mne_power_diag beta_low',
+                   'MEG mne_envelope_diag beta_low',
+                   'MEG mne_envelope_cross theta',
+                   'MEG mne_envelope_corr alpha'],
+            "2d": list(
+                combinations(
+                    ['Cortical Thickness',
+                     'Subcortical Volumes',
+                     'Connectivity Matrix, MODL 256 tan',
+                     'MEG power diag'], 2)),
+            "keys": [cc for cc in data.columns if 'MEG' in cc] + MRI}
 }
-# now we can make do combinations for 2D dependene.
+# now we can add missing combinations for 2D dependene.
 dependence_map['MEG all']['2d'] = list(
     combinations(dependence_map['MEG all']['1d'][:4], 2))
 
@@ -85,21 +110,21 @@ def compute_pdp(reg, X, columns, vars_2d):
                               features=[feat_idx])
 
 
-def run_dependence(data, dependence_map, n_jobs):
+def run_dependence(data, dependence_map, n_jobs, drop_na="global"):
     all_results = list()
     for key in dependence_map:
         sel = dependence_map[key]['keys']
         this_data = data[sel]
-        if DROPNA == 'local':
+        if drop_na == 'local':
             mask = this_data.dropna().index
-        elif DROPNA == 'global':
+        elif drop_na == 'global':
             mask = data.dropna().index
         else:
             mask = this_data.index
         X = this_data.loc[mask].values
         y = data['age'].loc[mask].values
 
-        if DROPNA is False:
+        if drop_na is False:
             # code missings to make the tress learn from it.
             X_left = X.copy()
             X_left[this_data.isna().values] = -1000
@@ -155,7 +180,6 @@ def run_dependence(data, dependence_map, n_jobs):
                     vars_2d=vv) for vv in dependence_map[key]['2d'])
                 labels = ['--'.join(k) for k in dependence_map[key]['2d']]
                 pdp_output['2d'] = dict(zip(labels, out_2d))
-
                 all_results.append(pdp_output)
     return all_results
 

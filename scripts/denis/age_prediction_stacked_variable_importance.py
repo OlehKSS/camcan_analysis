@@ -83,22 +83,24 @@ stacked_keys = {
 MRI = ['Cortical Surface Area', 'Cortical Thickness', 'Subcortical Volumes',
        'Connectivity Matrix, MODL 256 tan']
 stacked_keys['ALL'] = list(stacked_keys['MEG all']) + MRI
+stacked_keys['ALL no fMRI'] = list(stacked_keys['MEG all']) + MRI[:3]
+stacked_keys['ALL MRI'] = MRI
 
 
-def run_importance(data, stacked_keys):
+def run_importance(data, stacked_keys, drop_na='global'):
     all_results = dict()
     for key, sel in stacked_keys.items():
         this_data = data[sel]
-        if DROPNA == 'local':
+        if drop_na == 'local':
             mask = this_data.dropna().index
-        elif DROPNA == 'global':
+        elif drop_na == 'global':
             mask = data.dropna().index
         else:
             mask = this_data.index
         X = this_data.loc[mask].values
         y = data['age'].loc[mask].values
 
-        if DROPNA is False:
+        if drop_na is False:
             # code missings to make the tress learn from it.
             X_left = X.copy()
             X_left[this_data.isna().values] = -1000
@@ -146,9 +148,8 @@ def run_importance(data, stacked_keys):
         results = pd.concat(results, axis=0)
 
         n_permuations = 1000
-        importance_result = pd.DataFrame(
-            columns=sel,
-            index=range(n_permuations))
+        importance_result = pd.DataFrame(columns=sel,
+                                         index=range(n_permuations))
         estimator = regs[0][1]
         permutation_result = permutation_importance(
             estimator=estimator, X=X, y=y,
@@ -172,6 +173,7 @@ if DEBUG:
     stacked_keys = {k: v for k, v in stacked_keys.items()
                     if k == 'MEG power and envelope by freq'}
 
+# XXX TODO: do all repeats
 data = data.query("repeat == 0")
 
 out = run_importance(data, stacked_keys)
