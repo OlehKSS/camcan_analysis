@@ -151,7 +151,7 @@ def run_importance(data, stacked_keys, drop_na='global'):
         importance_result = pd.DataFrame(columns=sel,
                                          index=range(n_permuations))
         estimator = regs[0][1]
-            estimator.n_jobs = 1
+        estimator.n_jobs = 1
         permutation_result = permutation_importance(
             estimator=estimator, X=X, y=y,
             n_repeats=n_permuations,
