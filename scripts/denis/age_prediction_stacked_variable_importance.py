@@ -151,7 +151,7 @@ def run_importance(data, stacked_keys, drop_na='global'):
         importance_result = pd.DataFrame(columns=sel,
                                          index=range(n_permuations))
         estimator = regs[0][1]
-        estimator.n_jobs = 1
+            estimator.n_jobs = 1
         permutation_result = permutation_importance(
             estimator=estimator, X=X, y=y,
             n_repeats=n_permuations,
@@ -172,7 +172,7 @@ if DEBUG:
     N_JOBS = 1
     data = data.iloc[::6]
     stacked_keys = {k: v for k, v in stacked_keys.items()
-                    if k == 'MEG power and envelope by freq'}
+                    if k == 'MEG-power-envelope-by-freq'}
 
 # XXX TODO: do all repeats
 data = data.query("repeat == 0")
