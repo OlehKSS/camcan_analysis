@@ -108,7 +108,7 @@ def compute_pdp(reg, X, columns, vars_2d):
         vars_2d = [vars_2d]
     feat_idx = [columns.index(vv) for vv in vars_2d]
     return partial_dependence(estimator=reg, X=X,
-                              percentiles=(0.01, .99),
+                              percentiles=(0.05, .95),
                               features=[feat_idx])
 
 
