@@ -56,7 +56,7 @@ dependence_map = {
                 # keys are the columns used to fit the model.
                 "keys": [cc for cc in data.columns if 'MEG' in cc]},
     "ALL no fMRI": {'1d': ['Cortical Surface Area',
-                           'Cortical Thickness',
+                           'Cortical Thickness',
                            'Subcortical Volumes',
                            'MEG power diag',
                            'MEG envelope diag',
@@ -69,8 +69,8 @@ dependence_map = {
                     "2d": list(
                         combinations(
                            ['Cortical Thickness',
-                            'Subcortical Volumes',
-                            'MEG mne_power_diag beta_low',
+                            'Subcortical Volumes',
+                            'MEG mne_power_diag beta_low',
                             'MEG power diag'], 2)),
                   # keys are the columns used to fit the model.
                   "keys": [cc for cc in data.columns if 'MEG' in cc] + aMRI},
