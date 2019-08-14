@@ -68,10 +68,10 @@ dependence_map = {
                            'MEG mne_envelope_corr alpha'],
                     "2d": list(
                         combinations(
-                           ['Cortical Surface Area',
-                            'Cortical Thickness',
+                           ['Cortical Thickness',
                             'Subcortical Volumes',
-                            'MEG power diag'], 2)),
+                            'MEG mne_power_diag beta_low',
+                            'MEG power diag'], 2)),
                   # keys are the columns used to fit the model.
                   "keys": [cc for cc in data.columns if 'MEG' in cc] + aMRI},
     'ALL MRI': {"1d": MRI,
