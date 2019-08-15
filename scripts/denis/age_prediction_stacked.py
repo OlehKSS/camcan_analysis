@@ -222,7 +222,8 @@ if DEBUG:
     N_JOBS = 1
     stacked_keys = {'MEG all': meg_powers + meg_cross_powers + meg_handcrafted}
 
-for drop_na in (False, 'global')[:1 if DEBUG else 2]:
+drop_na_scenario = (False, 'local', 'global')
+for drop_na in drop_na_scenario[:1 if DEBUG else len(drop_na_scenario)]:
     out = Parallel(n_jobs=N_JOBS)(delayed(run_stacked)(
         data.query(f"repeat == {ii}"), stacked_keys, ii, drop_na)
         for ii in range(N_REPEATS))
