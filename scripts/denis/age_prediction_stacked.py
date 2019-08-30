@@ -17,24 +17,11 @@ N_JOBS = 10
 N_THREADS = 5
 
 IN_PREDICTIONS = f'./data/age_prediction_exp_data_na_denis_{N_REPEATS}-rep.h5'
-MEG_EXTRA_DATA = './data/meg_extra_data.h5'
-MEG_PEAKS = './data/evoked_peaks.csv'
-MEG_PEAKS2 = './data/evoked_peaks_task_audvis.csv'
 SCORES = './data/age_stacked_scores_{}.csv'
 OUT_PREDICTIONS = './data/age_stacked_predictions_{}.csv'
 
 
 data = pd.read_hdf(IN_PREDICTIONS, key='predictions')
-
-# Add extra dfeatures
-meg_extra = pd.read_hdf(MEG_EXTRA_DATA, key='MEG_rest_extra')[['alpha_peak']]
-meg_peaks = pd.read_csv(MEG_PEAKS).set_index('subject')[['aud', 'vis']]
-meg_peaks2 = pd.read_csv(MEG_PEAKS2).set_index('subject')[['audvis']]
-meg_peaks.columns = ['MEG ' + cc for cc in meg_peaks.columns]
-meg_peaks2.columns = ['MEG ' + cc for cc in meg_peaks2.columns]
-meg_extra.columns = ['MEG ' + cc for cc in meg_extra.columns]
-
-data = data.join(meg_extra).join(meg_peaks).join(meg_peaks2)
 
 FREQ_BANDS = ('alpha',
               'beta_high',
@@ -233,10 +220,10 @@ for drop_na in drop_na_scenario[:1 if DEBUG else len(drop_na_scenario)]:
     out_scores_meg = pd.concat(out_scores_meg, axis=0)
     out_scores_meg.to_csv(
         SCORES.format('meg' + drop_na if drop_na else '_na_coded'),
-        index=False)
+        index=True)
 
     out_predictions_meg = next(out)
     out_predictions_meg = pd.concat(out_predictions_meg, axis=0)
     out_predictions_meg.to_csv(
         OUT_PREDICTIONS.format('meg' + drop_na if drop_na else '_na_coded'),
-        index=False)
+        index=True)

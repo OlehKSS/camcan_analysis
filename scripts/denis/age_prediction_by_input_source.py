@@ -22,6 +22,7 @@ CONNECT_DATA_CORR = f'{OLEH_PATH}/connectivity/connect_data_correlation.h5'
 CONNECT_DATA_TAN = f'{OLEH_PATH}/connectivity/connect_data_tangent.h5'
 MEG_EXTRA_DATA = './data/meg_extra_data.h5'
 MEG_PEAKS = './data/evoked_peaks.csv'
+MEG_PEAKS2 = './data/evoked_peaks_task_audvis.csv'
 
 ##############################################################################
 # Control paramaters
@@ -181,10 +182,6 @@ meg_power_alpha = read_meg_rest_data(
 meg_power_subjects = set(meg_power_alpha.index)
 # source level subjects all the same for resting state
 
-meg_extra = pd.read_hdf(MEG_EXTRA_DATA, key='MEG_rest_extra')
-
-meg_peaks = pd.read_csv(MEG_PEAKS).set_index('subject')
-
 ##############################################################################
 # MRI features
 
@@ -236,8 +233,12 @@ subjects_template = pd.DataFrame(index=union_subjects,
                                  dtype=float)
 subjects_predictions = subjects_data.loc[subjects_template.index, ['age']]
 
-##############################################################################
-# Subset common subjects
+# Add extra dfeatures
+meg_extra = pd.read_hdf(MEG_EXTRA_DATA, key='MEG_rest_extra')
+meg_peaks = pd.read_csv(MEG_PEAKS).set_index('subject')[
+    ['aud', 'vis']]
+meg_peaks2 = pd.read_csv(MEG_PEAKS2).set_index('subject')
+
 print('Data was read successfully.')
 
 data_ref = {
@@ -245,6 +246,10 @@ data_ref = {
         [cc for cc in meg_extra.columns if '1f_low' in cc]],
     'MEG 1/f gamma': meg_extra[
         [cc for cc in meg_extra.columns if '1f_gamma' in cc]],
+    'MEG alpha_peak': meg_extra[['alpha_peak']],
+    'MEG aud': meg_peaks[['aud']],
+    'MEG vis': meg_peaks[['vis']],
+    'MEG audvis': meg_peaks2[['audvis']],
     'Cortical Surface Area': area_data,
     'Cortical Thickness': thickness_data,
     'Subcortical Volumes': volume_data,
@@ -284,8 +289,7 @@ def run_10_folds(data_ref, repeat, n_splits=10):
 
             data = subjects_template.join(data)
             (df_pred, arr_mae, arr_r2, train_sizes, train_scores,
-             test_scores) = run_ridge(data, subjects_data, cv=cv,
-                                      n_jobs=1)
+             test_scores) = run_ridge(data, subjects_data, cv=cv, n_jobs=1)
 
             arr_mae = -arr_mae
             mae = arr_mae.mean()
