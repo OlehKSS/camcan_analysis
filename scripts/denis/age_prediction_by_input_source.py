@@ -196,12 +196,18 @@ fmri_subjects = set(connect_data_tangent_modl.index)
 ##############################################################################
 # Bundle all data
 
+# Add extra dfeatures
+meg_extra = pd.read_hdf(MEG_EXTRA_DATA, key='MEG_rest_extra')
+meg_peaks = pd.read_csv(MEG_PEAKS).set_index('subject')[['aud', 'vis']]
+meg_peaks2 = pd.read_csv(MEG_PEAKS2).set_index('subject')
+
 meg_common_subjects = (meg_power_subjects.intersection(meg_extra.index)
-                                         .intersection(meg_peaks.index))
+                                         .intersection(meg_peaks.index)
+                                         .intersection(meg_peaks2.index))
 
 meg_union_subjects = (meg_power_subjects.union(meg_extra.index)
-                                        .union(meg_peaks.index))
-
+                                        .union(meg_peaks.index)
+                                        .union(meg_peaks2.index))
 
 print(f"Got {len(meg_union_subjects)} (union) and "
       f"{len(meg_common_subjects)} (intersection) MEG subject")
@@ -232,12 +238,6 @@ subjects_data = pd.read_csv('./data/participant_data.csv', index_col=0)
 subjects_template = pd.DataFrame(index=union_subjects,
                                  dtype=float)
 subjects_predictions = subjects_data.loc[subjects_template.index, ['age']]
-
-# Add extra dfeatures
-meg_extra = pd.read_hdf(MEG_EXTRA_DATA, key='MEG_rest_extra')
-meg_peaks = pd.read_csv(MEG_PEAKS).set_index('subject')[
-    ['aud', 'vis']]
-meg_peaks2 = pd.read_csv(MEG_PEAKS2).set_index('subject')
 
 print('Data was read successfully.')
 
