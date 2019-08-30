@@ -167,8 +167,7 @@ def read_meg_rest_data(kind, band, n_labels=448):
 
     elif kind == 'mne_envelope_corr_orth':
         data = pd.read_hdf(
-            op.join(DRAGO_PATH, f'mne_envelopes_corr_orth_{band}.h5'),
-            key=kind)
+            op.join(DRAGO_PATH, f'mne_envelopes_corr_orth_{band}.h5'), key=kind)
         # The result here is not an SPD matrix.
         # We do do Fisher's Z-transform instead.
         # https://en.wikipedia.org/wiki/Fisher_transformation
