@@ -63,8 +63,7 @@ for score, result in zip(scores, results):
     elif score == 'EkmanEmHex':
         # facial expression discrimination and other
         # performance markers
-        columns = ['Corr', 'MedRT',
-                   'MeanRT', 'StdRT', 'MinRT', 'MaxRT']
+        columns = ['MeanRT']
         tmp = pd.DataFrame(index=all_subjects)
         for column in columns:
             for emo in result['Type'].unique():
@@ -135,8 +134,9 @@ for score, result in zip(scores, results):
         # We can average over the phases of the experiment.
         out[f"{score}_trajectory_error_mean"] = result.filter(
             regex="TrajectoryErrorMean").mean(axis=1)
+
         out[f"{score}_trajectory_error_sd"] = result.filter(
-            regex="TrajectoryErrorSd").std(axis=1)
+            regex="TrajectoryErrorSD").std(axis=1)
     
     elif score == "PicturePriming":
         out[f"{score}_baseline_acc"] = result['ACC_baseline_all']
