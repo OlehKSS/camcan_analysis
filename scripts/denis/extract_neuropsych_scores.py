@@ -1,3 +1,7 @@
+# Author: Denis A. Engemann <denis.engemann@gmail.com>
+#
+# License: BSD (3-clause)
+
 import glob
 import os
 import os.path as op

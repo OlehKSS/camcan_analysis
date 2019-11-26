@@ -4,6 +4,10 @@ Two types of plots are done:
     - MAE versus the chronological age,
     - MAE of one modality versus MAE of another modality.
 """
+# Author: Denis A. Engemann <denis.engemann@gmail.com>
+#
+# License: BSD (3-clause)
+
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor

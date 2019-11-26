@@ -1,3 +1,7 @@
+# Author: Denis A. Engemann <denis.engemann@gmail.com>
+#
+# License: BSD (3-clause)
+
 import os.path as op
 import numpy as np
 import pandas as pd

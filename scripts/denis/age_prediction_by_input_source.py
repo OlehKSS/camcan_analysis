@@ -1,4 +1,8 @@
 """Age prediction using MRI, fMRI and MEG data."""
+# Author: Denis A. Engemann <denis.engemann@gmail.com>
+#
+# License: BSD (3-clause)
+
 import os.path as op
 import pickle
 
